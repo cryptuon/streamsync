@@ -1,0 +1,38 @@
+[package]
+name = "idl-sync"
+version = "0.1.0"
+edition = "2021"
+description = "Real-time IDL synchronization from Solana program behavior analysis"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+blake3 = { workspace = true }
+dashmap = { workspace = true }
+chrono = { workspace = true }
+
+# Solana dependencies
+solana-sdk = { workspace = true }
+
+# IDL and schema processing
+schemars = "0.8"
+indexmap = "2.0"
+
+# Pattern analysis
+regex = "1.10"
+petgraph = "0.6"
+
+# Machine learning for pattern detection (placeholder - implement with simpler methods first)
+# candle-core = "0.3"
+# candle-nn = "0.3"
+
+[dev-dependencies]
+criterion = { workspace = true }
+proptest = { workspace = true }
+tokio-test = "0.4"
+

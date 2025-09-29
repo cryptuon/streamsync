@@ -1,0 +1,29 @@
+{
+  "total_tests": 50,
+  "successful_tests": 50,
+  "failed_tests": 0,
+  "success_rate": 1.0,
+  "program_results": {
+    "SPL Token": {
+      "program_name": "SPL Token",
+      "total_tests": 50,
+      "successful_reconstructions": 50,
+      "failed_reconstructions": 0,
+      "success_rate": 1.0,
+      "average_confidence": 0.7404,
+      "average_reconstruction_time_ms": 7.291999999999996
+    }
+  },
+  "compression_results": {
+    "total_compression_tests": 0,
+    "successful_compressions": 0,
+    "compression_success_rate": 0.0,
+    "average_compression_confidence": 0.0,
+    "merkle_trees_tested": 0
+  },
+  "confidence_score": 0.7404,
+  "validation_timestamp": {
+    "secs_since_epoch": 1759093308,
+    "nanos_since_epoch": 995884256
+  }
+}

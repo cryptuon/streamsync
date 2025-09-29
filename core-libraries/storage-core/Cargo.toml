@@ -1,0 +1,36 @@
+[package]
+name = "storage-core"
+version = "0.1.0"
+edition = "2021"
+description = "High-performance storage layer for StreamSync transaction indexing"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+# Database - simplified for now
+# duckdb = { workspace = true }
+# sqlx = { workspace = true, features = ["runtime-tokio-rustls", "postgres", "chrono", "uuid"] }
+
+# Async and utilities
+tokio = { workspace = true }
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+uuid = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+chrono = { workspace = true }
+num_cpus = { workspace = true }
+async-trait = { workspace = true }
+
+# Performance
+dashmap = { workspace = true }
+ahash = { workspace = true }
+rayon = { workspace = true }
+
+# Compression
+flate2 = { workspace = true }
+
+[dev-dependencies]
+tokio-test = "0.4"
+criterion = { workspace = true }
+proptest = { workspace = true }

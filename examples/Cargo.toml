@@ -1,0 +1,62 @@
+[package]
+name = "streamsync-examples"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "basic_demo"
+path = "basic_demo.rs"
+
+[[bin]]
+name = "solana_data_demo"
+path = "solana_data_demo.rs"
+
+[[bin]]
+name = "controlled_test"
+path = "controlled_test.rs"
+
+[[bin]]
+name = "dataset_validation"
+path = "dataset_validation.rs"
+
+[[bin]]
+name = "dataset_validation_demo"
+path = "dataset_validation_demo.rs"
+
+[[bin]]
+name = "real_data_validator"
+path = "real_data_validator.rs"
+
+[[bin]]
+name = "live_data_demo"
+path = "live_data_demo.rs"
+
+[[bin]]
+name = "simple_live_demo"
+path = "simple_live_demo.rs"
+
+[[bin]]
+name = "economics_demo"
+path = "economics_demo.rs"
+
+[dependencies]
+# Core libraries
+zk-reconstruction = { path = "../core-libraries/zk-reconstruction" }
+idl-sync = { path = "../core-libraries/idl-sync" }
+streamsync-node = { path = "../src" }
+# distributed-duckdb = { path = "../core-libraries/distributed-duckdb" } # Temporarily disabled
+
+# Common dependencies
+tokio = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+solana-sdk = { workspace = true }
+solana-client = { workspace = true }
+solana-account-decoder = { workspace = true }
+solana-transaction-status = { workspace = true }
+chrono = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+blake3 = { workspace = true }
+uuid = { workspace = true }

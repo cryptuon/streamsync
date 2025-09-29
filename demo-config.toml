@@ -1,0 +1,51 @@
+[node]
+id = "761b8026-d613-4cd3-9d6c-12379eddd036"
+name = "streamsync-node"
+role = "secondary"
+api_port = 8080
+metrics_port = 9090
+data_dir = "./data"
+log_level = "info"
+
+[networking]
+listen_addr = "0.0.0.0"
+p2p_port = 7777
+bootstrap_nodes = []
+max_peers = 50
+connection_timeout_ms = 10000
+heartbeat_interval_ms = 5000
+enable_tls = false
+
+[consensus]
+view_timeout_ms = 30000
+request_timeout_ms = 5000
+max_retries = 3
+checkpoint_interval = 100
+max_pending_requests = 1000
+enable_fast_recovery = true
+
+[sharding]
+virtual_nodes = 150
+replication_factor = 3
+hash_function = "ahash"
+auto_rebalance = true
+rebalance_threshold = 0.2
+migration_batch_size = 100
+migration_timeout_ms = 30000
+
+[storage]
+backend = "hybrid"
+cache_size_mb = 512
+retention_days = 30
+compression = "gzip"
+batch_size = 1000
+sync_interval_s = 60
+
+[performance]
+worker_threads = 16
+io_threads = 4
+network_buffer_size = 65536
+query_timeout_ms = 30000
+max_concurrent_queries = 100
+enable_metrics = true
+metrics_interval_s = 10

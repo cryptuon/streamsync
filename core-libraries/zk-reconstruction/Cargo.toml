@@ -1,0 +1,41 @@
+[package]
+name = "zk-reconstruction"
+version = "0.1.0"
+edition = "2021"
+description = "High-performance ZK compression gap reconstruction for Solana indexing"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+blake3 = { workspace = true }
+sha2 = { workspace = true }
+dashmap = { workspace = true }
+ahash = { workspace = true }
+chrono = { workspace = true }
+uuid = { workspace = true }
+
+# Solana dependencies
+solana-sdk = { workspace = true }
+
+# Math and cryptography for reconstruction
+num-bigint = "0.4"
+num-traits = "0.2"
+rand = "0.8"
+
+# Caching
+lru = "0.12"
+
+# Additional dependencies for compilation
+hex = "0.4"
+num_cpus = "1.16"
+
+[dev-dependencies]
+criterion = { workspace = true }
+proptest = { workspace = true }
+tokio-test = "0.4"
+

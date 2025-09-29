@@ -1,0 +1,34 @@
+[package]
+name = "solana-indexer"
+version = "0.1.0"
+edition = "2021"
+description = "Solana transaction indexing and fetching for StreamSync"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+# Solana dependencies
+solana-client = { workspace = true }
+solana-sdk = { workspace = true }
+solana-account-decoder = { workspace = true }
+solana-transaction-status = { workspace = true }
+
+# Async and utilities
+tokio = { workspace = true }
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+uuid = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+chrono = { workspace = true }
+
+# Performance
+dashmap = { workspace = true }
+ahash = { workspace = true }
+
+# Networking for RPC connections
+futures = { workspace = true }
+
+[dev-dependencies]
+tokio-test = "0.4"
+proptest = { workspace = true }

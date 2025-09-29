@@ -1,0 +1,39 @@
+{
+  "dataset_type": "adapted_synthetic",
+  "validation_timestamp": {
+    "secs_since_epoch": 1759096834,
+    "nanos_since_epoch": 691993369
+  },
+  "total_transactions": 50,
+  "successful_reconstructions": 0,
+  "failed_reconstructions": 50,
+  "success_rate": 0.0,
+  "program_results": {
+    "SPL Token": {
+      "program_name": "SPL Token",
+      "total_tests": 50,
+      "successful_tests": 0,
+      "success_rate": 0.0,
+      "average_confidence": 0.0,
+      "average_processing_time_ms": 10.04,
+      "real_data_patterns": []
+    }
+  },
+  "compression_results": {
+    "total_compression_tests": 0,
+    "successful_tests": 0,
+    "success_rate": 0.0,
+    "average_confidence": 0.0,
+    "merkle_trees_processed": 0,
+    "compression_insights": []
+  },
+  "confidence_score": 0.0,
+  "technical_insights": [
+    "Dataset Type: adapted_synthetic with 50 transactions",
+    "Lower success rate indicates need for algorithm refinement",
+    "Tested 1 different Solana programs",
+    "Average accounts per transaction: 4.0",
+    "Enhanced error handling provided detailed operation tracking",
+    "Structured logging enabled comprehensive debugging capabilities"
+  ]
+}

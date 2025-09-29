@@ -1,0 +1,65 @@
+{
+  "total_tests": 1000,
+  "successful_tests": 0,
+  "failed_tests": 1000,
+  "success_rate": 0.0,
+  "program_results": {
+    "Metaplex Bubblegum": {
+      "program_name": "Metaplex Bubblegum",
+      "total_tests": 100,
+      "successful_reconstructions": 0,
+      "failed_reconstructions": 100,
+      "success_rate": 0.0,
+      "average_confidence": 0.0,
+      "average_reconstruction_time_ms": 10.38
+    },
+    "SPL Token": {
+      "program_name": "SPL Token",
+      "total_tests": 400,
+      "successful_reconstructions": 0,
+      "failed_reconstructions": 400,
+      "success_rate": 0.0,
+      "average_confidence": 0.0,
+      "average_reconstruction_time_ms": 10.7575
+    },
+    "Jupiter Aggregator": {
+      "program_name": "Jupiter Aggregator",
+      "total_tests": 200,
+      "successful_reconstructions": 0,
+      "failed_reconstructions": 200,
+      "success_rate": 0.0,
+      "average_confidence": 0.0,
+      "average_reconstruction_time_ms": 10.955
+    },
+    "Account Compression": {
+      "program_name": "Account Compression",
+      "total_tests": 50,
+      "successful_reconstructions": 0,
+      "failed_reconstructions": 50,
+      "success_rate": 0.0,
+      "average_confidence": 0.0,
+      "average_reconstruction_time_ms": 10.76
+    },
+    "Metaplex": {
+      "program_name": "Metaplex",
+      "total_tests": 250,
+      "successful_reconstructions": 0,
+      "failed_reconstructions": 250,
+      "success_rate": 0.0,
+      "average_confidence": 0.0,
+      "average_reconstruction_time_ms": 10.3
+    }
+  },
+  "compression_results": {
+    "total_compression_tests": 150,
+    "successful_compressions": 0,
+    "compression_success_rate": 0.0,
+    "average_compression_confidence": 0.0,
+    "merkle_trees_tested": 15
+  },
+  "confidence_score": 0.0,
+  "validation_timestamp": {
+    "secs_since_epoch": 1759088072,
+    "nanos_since_epoch": 243573036
+  }
+}

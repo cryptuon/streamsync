@@ -1,0 +1,39 @@
+{
+  "collection_start_time": {
+    "secs_since_epoch": 1759087876,
+    "nanos_since_epoch": 97324514
+  },
+  "collection_end_time": {
+    "secs_since_epoch": 1759087876,
+    "nanos_since_epoch": 97326399
+  },
+  "total_blocks_scanned": 200,
+  "total_transactions_collected": 1000,
+  "transactions_per_program": {
+    "SPL Token": 400,
+    "Metaplex": 250,
+    "Jupiter Aggregator": 200,
+    "Metaplex Bubblegum": 100,
+    "Account Compression": 50
+  },
+  "success_rate": 0.959,
+  "average_transaction_size": 41.005,
+  "compression_transaction_count": 150,
+  "unique_merkle_trees": [
+    "CMPRSTree00000005",
+    "CMPRSTree00000003",
+    "CMPRSTree00000009",
+    "CMPRSTree0000000a",
+    "CMPRSTree0000000b",
+    "CMPRSTree0000000d",
+    "CMPRSTree00000006",
+    "CMPRSTree00000008",
+    "CMPRSTree0000000e",
+    "CMPRSTree00000004",
+    "CMPRSTree00000001",
+    "CMPRSTree00000007",
+    "CMPRSTree00000002",
+    "CMPRSTree00000000",
+    "CMPRSTree0000000c"
+  ]
+}

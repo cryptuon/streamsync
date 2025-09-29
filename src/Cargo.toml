@@ -1,0 +1,44 @@
+[package]
+name = "streamsync-node"
+version = "0.1.0"
+edition = "2021"
+description = "StreamSync distributed Solana transaction indexing node"
+license = "MIT OR Apache-2.0"
+
+[[bin]]
+name = "streamsync"
+path = "main.rs"
+
+[dependencies]
+# Core libraries
+consensus-core = { path = "../core-libraries/consensus-core" }
+networking-core = { path = "../core-libraries/networking-core" }
+sharding-core = { path = "../core-libraries/sharding-core" }
+solana-indexer = { path = "../core-libraries/solana-indexer" }
+storage-core = { path = "../core-libraries/storage-core" }
+
+# CLI and configuration
+clap = { workspace = true }
+toml = "0.8"
+num_cpus = "1.16"
+
+# HTTP API
+axum = { workspace = true }
+tower = { workspace = true }
+tower-http = { workspace = true }
+hyper = { workspace = true }
+reqwest = { workspace = true }
+
+# Async and utilities
+tokio = { workspace = true }
+anyhow = { workspace = true }
+async-trait = { workspace = true }
+uuid = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+chrono = { workspace = true }
+
+[dev-dependencies]
+tokio-test = "0.4"

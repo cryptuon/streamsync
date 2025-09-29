@@ -1,0 +1,80 @@
+[package]
+name = "streamsync-tools"
+version = "0.1.0"
+edition = "2021"
+description = "Data collection and analysis tools for StreamSync"
+
+[[bin]]
+name = "data_collector"
+path = "data_collector.rs"
+
+[[bin]]
+name = "dataset_analyzer"
+path = "dataset_analyzer.rs"
+
+[[bin]]
+name = "simple_collector"
+path = "simple_collector.rs"
+
+[[bin]]
+name = "real_data_collector"
+path = "real_data_collector.rs"
+
+[[bin]]
+name = "real_data_collector_v2"
+path = "real_data_collector_v2.rs"
+
+[[bin]]
+name = "threshold_validation_test"
+path = "threshold_validation_test.rs"
+
+[[bin]]
+name = "simple_threshold_test"
+path = "simple_threshold_test.rs"
+
+[[bin]]
+name = "live_pipeline_test"
+path = "live_pipeline_test.rs"
+
+[[bin]]
+name = "quick_pipeline_test"
+path = "quick_pipeline_test.rs"
+
+[[bin]]
+name = "aggressive_data_collector"
+path = "aggressive_data_collector.rs"
+
+[[bin]]
+name = "program_parser_demo"
+path = "program_parser_demo.rs"
+
+[[bin]]
+name = "performance_benchmark"
+path = "performance_benchmark.rs"
+
+[dependencies]
+# Core dependencies
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+chrono = { workspace = true }
+
+# Solana dependencies
+solana-client = { workspace = true }
+solana-sdk = { workspace = true }
+solana-account-decoder = { workspace = true }
+solana-transaction-status = { workspace = true }
+
+# Utilities
+bs58 = "0.5"
+uuid = { workspace = true }
+clap = { version = "4.0", features = ["derive"] }
+fastrand = "2.0"
+
+# Core libraries for testing
+zk-reconstruction = { path = "../core-libraries/zk-reconstruction" }
+idl-sync = { path = "../core-libraries/idl-sync" }
+program-parser = { path = "../core-libraries/program-parser" }

@@ -1,0 +1,37 @@
+[package]
+name = "networking-core"
+version = "0.1.0"
+edition = "2021"
+description = "High-performance networking layer for distributed systems"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+uuid = { workspace = true }
+bincode = { workspace = true }
+async-trait = { workspace = true }
+
+# Networking dependencies
+tonic = { workspace = true }
+prost = { workspace = true }
+nng = { workspace = true }
+
+# Utilities
+dashmap = { workspace = true }
+ahash = { workspace = true }
+flate2 = { workspace = true }
+fastrand = "2.0"
+
+[dev-dependencies]
+tokio-test = "0.4"
+criterion = { workspace = true }
+proptest = { workspace = true }
+tracing-subscriber = { workspace = true }
+
+[build-dependencies]
+tonic-build = { workspace = true }

@@ -1,0 +1,33 @@
+[package]
+name = "sharding-core"
+version = "0.1.0"
+edition = "2021"
+description = "Consistent hashing and data sharding for distributed systems"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+uuid = { workspace = true }
+sha2 = { workspace = true }
+bincode = { workspace = true }
+async-trait = { workspace = true }
+
+# Hash ring dependencies
+ahash = { workspace = true }
+dashmap = { workspace = true }
+rand = { workspace = true }
+
+[dev-dependencies]
+tokio-test = "0.4"
+criterion = { workspace = true }
+proptest = { workspace = true }
+tracing-subscriber = { workspace = true }
+
+[[bench]]
+name = "sharding_benchmarks"
+harness = false
