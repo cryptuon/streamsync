@@ -12,6 +12,7 @@ mod gateway;
 mod light_client;
 mod rate_limiter;
 mod revenue_sharing;
+mod wallet_manager;
 
 use crate::node::StreamSyncNode;
 use crate::config::NodeConfig;
