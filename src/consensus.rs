@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::{broadcast, RwLock};
-use tracing::{debug, error, info, warn};
+use tracing::{debug, info, warn};
 use uuid::Uuid;
 
 use crate::config::NodeConfig;
@@ -303,14 +303,14 @@ impl ConsensusCoordinator {
     }
 
     /// Add a new participant to the consensus group
-    pub async fn add_participant(&self, node_id: Uuid, address: String) -> Result<()> {
+    pub async fn add_participant(&self, node_id: Uuid, _address: String) -> Result<()> {
         let mut participants = self.participants.write().await;
         if !participants.contains(&node_id) {
             participants.push(node_id);
             info!("Added consensus participant: {}", node_id);
 
             // If we have a transport, add the peer
-            if let Some(engine) = &self.engine {
+            if let Some(_engine) = &self.engine {
                 // In a real implementation, we would notify the engine about the new participant
                 debug!("Notified consensus engine about new participant");
             }
@@ -332,7 +332,7 @@ impl ConsensusCoordinator {
         let mut participants = vec![self.node_id];
 
         // Add bootstrap nodes if configured
-        for bootstrap_addr in &self.config.consensus.bootstrap_nodes {
+        for _bootstrap_addr in &self.config.consensus.bootstrap_nodes {
             // In a real implementation, we would resolve these addresses to node IDs
             // For now, generate placeholder node IDs
             let node_id = Uuid::new_v4(); // Use v4 instead of v5 for bootstrap nodes

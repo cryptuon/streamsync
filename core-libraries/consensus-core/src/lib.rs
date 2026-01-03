@@ -16,6 +16,7 @@
 //!
 //! ```rust,no_run
 //! use consensus_core::{ConsensusEngine, Config, Proposal};
+//! use consensus_core::transport::MockTransport;
 //! use uuid::Uuid;
 //!
 //! # async fn example() -> anyhow::Result<()> {
@@ -24,11 +25,12 @@
 //!
 //! let config = Config {
 //!     node_id,
-//!     participants,
+//!     participants: participants.clone(),
 //!     ..Default::default()
 //! };
 //!
-//! let engine = ConsensusEngine::new(config).await?;
+//! let transport = MockTransport::new(node_id, participants);
+//! let engine = ConsensusEngine::new(config, transport).await?;
 //!
 //! // Propose a value
 //! let proposal = Proposal::new("example".to_string(), b"data".to_vec());

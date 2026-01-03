@@ -42,6 +42,22 @@ impl CompressionEngine {
         let start_time = std::time::Instant::now();
         let original_size = data.len() as u64;
 
+        // Skip compression for small data (< 100 bytes) as compression overhead
+        // exceeds any potential savings. Gzip has ~18 bytes of header/footer overhead.
+        if data.len() < 100 && self.algorithm != CompressionType::None {
+            debug!("Skipping compression for small data ({} bytes)", data.len());
+            return Ok((
+                data.to_vec(),
+                CompressionStats {
+                    original_size,
+                    compressed_size: original_size,
+                    compression_ratio: 1.0,
+                    compression_time_ms: start_time.elapsed().as_millis(),
+                    decompression_time_ms: 0,
+                },
+            ));
+        }
+
         let compressed_data = match self.algorithm {
             CompressionType::None => {
                 return Ok((
@@ -97,16 +113,20 @@ impl CompressionEngine {
         let start_time = std::time::Instant::now();
         let compressed_size = data.len() as u64;
 
+        // Check if data is actually gzip-compressed (magic bytes: 0x1f, 0x8b)
+        // Data that was too small to compress won't have these headers
+        let is_gzip_compressed = data.len() >= 2 && data[0] == 0x1f && data[1] == 0x8b;
+
         let decompressed_data = match self.algorithm {
             CompressionType::None => data.to_vec(),
-            CompressionType::Gzip => self.decompress_gzip(data)?,
-            CompressionType::Zstd => {
-                // For simplicity, fall back to gzip
-                self.decompress_gzip(data)?
-            }
-            CompressionType::Lz4 => {
-                // For simplicity, fall back to gzip
-                self.decompress_gzip(data)?
+            CompressionType::Gzip | CompressionType::Zstd | CompressionType::Lz4 => {
+                if is_gzip_compressed {
+                    self.decompress_gzip(data)?
+                } else {
+                    // Data wasn't actually compressed (e.g., too small), return as-is
+                    debug!("Data not gzip-compressed, returning as-is");
+                    data.to_vec()
+                }
             }
         };
 

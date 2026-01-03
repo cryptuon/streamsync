@@ -11,7 +11,7 @@ use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use std::fs;
 use anyhow::{Result, Context};
-use tracing::{info, warn};
+use tracing::info;
 
 /// Re-export the CollectedTransaction type for analysis
 /// In a real implementation, this would be in a shared library
@@ -580,7 +580,7 @@ impl DatasetAnalyzer {
     fn analyze_state_changes(&self, transactions: &[&CollectedTransaction]) -> StateChangeAnalysis {
         let mut balance_changes = Vec::new();
         let mut account_creations = 0;
-        let mut account_closures = 0;
+        let account_closures = 0;
         let mut data_modifications = 0;
 
         for tx in transactions {

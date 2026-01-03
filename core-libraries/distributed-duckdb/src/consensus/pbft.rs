@@ -6,15 +6,14 @@ use super::{
     message_log::MessageLog,
     view_change::ViewChangeManager,
 };
-use crate::network::protocol::{ConsensusMessage, NetworkMessage, PreparedProof, ViewChangeProof, NodeSignature};
+use crate::network::protocol::{ConsensusMessage, NetworkMessage, PreparedProof, ViewChangeProof};
 use anyhow::Result;
-use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::{RwLock, mpsc, broadcast};
 use tokio::time::{timeout, Duration, Instant};
 use uuid::Uuid;
 use chrono::Utc;
-use tracing::{info, warn, error, debug};
+use tracing::{info, warn, debug};
 
 /// PBFT Consensus Engine
 pub struct PBFTConsensus {
@@ -252,7 +251,7 @@ impl PBFTConsensus {
     }
 
     async fn handle_pre_prepare(&self, view: u64, sequence: u64, digest: String, proposal: ConsensusProposal, primary: Uuid) -> Result<()> {
-        let mut state = self.state.write().await;
+        let state = self.state.write().await;
 
         // Validate view and sequence
         if view != state.current_view {
@@ -505,7 +504,7 @@ impl PBFTConsensus {
 
     async fn start_checkpoint_manager(&self) {
         let running = self.running.clone();
-        let checkpoint_interval = self.config.checkpoint_interval;
+        let _checkpoint_interval = self.config.checkpoint_interval;
 
         tokio::spawn(async move {
             while *running.read().await {
@@ -524,7 +523,7 @@ impl PBFTConsensus {
                 tokio::time::sleep(Duration::from_secs(10)).await;
 
                 // Update statistics
-                let mut stats = stats.write().await;
+                let _stats = stats.write().await;
                 // Update rolling averages, etc.
             }
         });

@@ -1,11 +1,9 @@
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use async_trait::async_trait;
-use serde_json::Value;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use tracing::{debug, info};
-use uuid::Uuid;
 
 use crate::config::StorageConfig;
 use crate::schema::SchemaManager;

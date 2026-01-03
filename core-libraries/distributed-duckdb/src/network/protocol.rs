@@ -5,6 +5,9 @@ use uuid::Uuid;
 use chrono::{DateTime, Utc};
 use std::collections::HashMap;
 
+// Re-export ConsensusProposal from consensus module to avoid duplication
+pub use crate::consensus::{ConsensusProposal, NodeAction};
+
 /// Cryptographic signature from a node
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NodeSignature {
@@ -146,44 +149,7 @@ pub enum ConsensusMessage {
     },
 }
 
-/// Consensus proposal types
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum ConsensusProposal {
-    /// IDL update proposal
-    IdlUpdate {
-        program_id: String,
-        new_idl: String,
-        proposer: Uuid,
-    },
-
-    /// Data shard assignment
-    ShardAssignment {
-        shard_id: String,
-        assigned_nodes: Vec<Uuid>,
-        replication_factor: u32,
-    },
-
-    /// Node addition/removal
-    NodeManagement {
-        action: NodeAction,
-        target_node: Uuid,
-        reason: String,
-    },
-
-    /// Configuration update
-    ConfigUpdate {
-        parameter: String,
-        old_value: String,
-        new_value: String,
-    },
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum NodeAction {
-    Add,
-    Remove,
-    Suspend,
-}
+// ConsensusProposal and NodeAction are imported from crate::consensus
 
 /// Data distribution messages
 #[derive(Debug, Clone, Serialize, Deserialize)]

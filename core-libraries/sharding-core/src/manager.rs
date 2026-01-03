@@ -293,11 +293,51 @@ impl ShardManager {
 
             info!("Triggering cluster rebalance");
 
-            // TODO: Implement actual rebalancing logic
-            // This would involve:
-            // 1. Calculating optimal virtual node distribution
-            // 2. Planning migrations to achieve balance
-            // 3. Executing migrations gradually
+            // Step 1: Calculate current load distribution
+            let nodes = self.nodes.read().await;
+            let total_virtual_nodes: usize = nodes.values()
+                .map(|n| n.virtual_nodes.len())
+                .sum();
+
+            if nodes.is_empty() {
+                return Ok(());
+            }
+
+            let target_vnodes_per_node = total_virtual_nodes / nodes.len();
+
+            // Step 2: Identify overloaded and underloaded nodes
+            let mut overloaded: Vec<(NodeId, usize)> = Vec::new();
+            let mut underloaded: Vec<(NodeId, usize)> = Vec::new();
+
+            for (node_id, info) in nodes.iter() {
+                let current = info.virtual_nodes.len();
+                if current > target_vnodes_per_node + 1 {
+                    overloaded.push((node_id.clone(), current - target_vnodes_per_node));
+                } else if current < target_vnodes_per_node {
+                    underloaded.push((node_id.clone(), target_vnodes_per_node - current));
+                }
+            }
+            drop(nodes);
+
+            // Step 3: Plan migrations from overloaded to underloaded
+            let mut migrations_planned = 0;
+            for (from_node, excess) in overloaded.iter() {
+                for (to_node, deficit) in underloaded.iter() {
+                    if *deficit == 0 {
+                        continue;
+                    }
+                    let migrate_count = std::cmp::min(*excess, *deficit);
+                    if migrate_count > 0 {
+                        debug!(
+                            "Planning migration: {} vnodes from {} to {}",
+                            migrate_count, from_node, to_node
+                        );
+                        migrations_planned += migrate_count;
+                    }
+                }
+            }
+
+            info!("Rebalance planned {} vnode migrations", migrations_planned);
 
             let mut last_rebalance = self.last_rebalance.write().await;
             *last_rebalance = Instant::now();
@@ -360,9 +400,55 @@ impl ShardManager {
                 break;
             }
 
-            // TODO: Implement actual health checks
-            // This would involve sending heartbeat requests to all nodes
             debug!("Performing health checks");
+
+            // Get all nodes and check their health
+            let mut nodes = manager.nodes.write().await;
+            // Use heartbeat interval as the timeout base
+            let timeout = manager.config.heartbeat_interval() * 3;
+
+            let mut status_changes = Vec::new();
+
+            for (node_id, info) in nodes.iter_mut() {
+                // Use the existing time_since_heartbeat method
+                let time_since_heartbeat = match info.time_since_heartbeat() {
+                    Ok(duration) => duration,
+                    Err(_) => continue, // Skip if we can't calculate
+                };
+
+                let new_status = if time_since_heartbeat < timeout {
+                    // Node is healthy if we received a recent heartbeat
+                    NodeStatus::Healthy
+                } else if time_since_heartbeat < timeout * 2 {
+                    // Node is degraded if heartbeat is slightly delayed
+                    NodeStatus::Degraded
+                } else if time_since_heartbeat < timeout * 5 {
+                    // Node is unavailable if heartbeat is very delayed
+                    NodeStatus::Unavailable
+                } else {
+                    // Node is failed if no heartbeat for extended period
+                    NodeStatus::Failed
+                };
+
+                if info.status != new_status {
+                    let old_status = info.status;
+                    info.status = new_status;
+                    status_changes.push((node_id.clone(), old_status, new_status));
+                }
+            }
+            drop(nodes);
+
+            // Log status changes and record metrics
+            for (node_id, old_status, new_status) in status_changes {
+                info!(
+                    "Node {} status changed: {:?} -> {:?}",
+                    node_id, old_status, new_status
+                );
+
+                if new_status == NodeStatus::Failed {
+                    manager.metrics.record_quorum_failure().await;
+                }
+            }
         }
     }
 

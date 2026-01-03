@@ -115,6 +115,7 @@ pub trait MessageHandler: Send + Sync {
 /// Mock transport for testing
 #[derive(Debug)]
 pub struct MockTransport {
+    #[allow(dead_code)]
     node_id: NodeId,
     peers: Vec<NodeId>,
     message_queue: tokio::sync::Mutex<Vec<Message>>,
@@ -246,7 +247,7 @@ impl Clone for InMemoryTransport {
 }
 
 #[derive(Debug)]
-struct InMemoryState {
+pub struct InMemoryState {
     /// Messages for each node
     messages: std::collections::HashMap<NodeId, Vec<Message>>,
     /// Connected nodes
@@ -351,18 +352,27 @@ impl Transport for InMemoryTransport {
         }
         drop(running);
 
-        let mut state = self.shared_state.write().await;
-        let queue = state.messages.entry(self.node_id).or_insert_with(Vec::new);
+        // Try to get a message without holding the lock during sleep
+        {
+            let mut state = self.shared_state.write().await;
+            let queue = state.messages.entry(self.node_id).or_insert_with(Vec::new);
 
-        if let Some(message) = queue.pop() {
-            let mut stats = self.stats.write().await;
-            stats.messages_received += 1;
-            stats.bytes_received += message.size() as u64;
-            Ok(message)
-        } else {
-            tokio::time::sleep(tokio::time::Duration::from_millis(1)).await;
-            Err(crate::ConsensusError::Timeout { timeout_ms: 1 }.into())
+            // Use remove(0) for FIFO order instead of pop() which is LIFO
+            // This ensures messages are delivered in the order they were sent
+            if !queue.is_empty() {
+                let message = queue.remove(0);
+                drop(state); // Release lock before updating stats
+                let mut stats = self.stats.write().await;
+                stats.messages_received += 1;
+                stats.bytes_received += message.size() as u64;
+                return Ok(message);
+            }
+            // Lock is released here when state goes out of scope
         }
+
+        // Sleep WITHOUT holding the lock
+        tokio::time::sleep(tokio::time::Duration::from_millis(1)).await;
+        Err(crate::ConsensusError::Timeout { timeout_ms: 1 }.into())
     }
 
     async fn connected_peers(&self) -> Vec<NodeId> {

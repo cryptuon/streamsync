@@ -478,3 +478,171 @@ This architecture provides:
 - **Fault tolerance** through redundancy and consensus
 - **Scalability** through distributed data and computation
 - **Flexibility** for various query types and performance requirements
+
+---
+
+## Gossip Protocol Architecture
+
+### Network Topology Management
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   Node A        │───▶│   Node B        │───▶│   Node C        │
+│                 │◀───│                 │◀───│                 │
+│ Gossip Manager  │    │ Gossip Manager  │    │ Gossip Manager  │
+│ - Peer tracking │    │ - Peer tracking │    │ - Peer tracking │
+│ - Heartbeats    │    │ - Heartbeats    │    │ - Heartbeats    │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+        │                      │                      │
+        ▼                      ▼                      ▼
+┌─────────────────────────────────────────────────────────────┐
+│                  Gossip Message Flow                         │
+│                                                              │
+│  Push: "Here's my peer list" ──────────────────────────────▶│
+│  Pull: "What peers do you know?" ◀──────────────────────────│
+│  PushPull: Combined for efficiency ◀───────────────────────▶│
+│  Heartbeat: "I'm alive" ────────────────────────────────────▶│
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Gossip Message Types
+```rust
+pub enum GossipMessage {
+    Push(GossipPush),         // Share our peer list
+    Pull(GossipPull),         // Request peer list
+    PushPull(GossipPushPull), // Combined for efficiency
+    Heartbeat(GossipHeartbeat), // Liveness check
+    StateSync(GossipStateSync), // Configuration sync
+}
+```
+
+### Peer Status State Machine
+```
+                 ┌──────────────┐
+                 │   Unknown    │
+                 └──────┬───────┘
+                        │ First contact
+                        ▼
+                 ┌──────────────┐
+            ┌────│   Healthy    │◀──────────────┐
+            │    └──────┬───────┘               │
+            │           │ Missed heartbeat      │ Heartbeat received
+            │           ▼                       │
+            │    ┌──────────────┐               │
+            │    │   Degraded   │───────────────┘
+            │    └──────┬───────┘
+            │           │ Multiple missed
+            │           ▼
+            │    ┌──────────────┐
+            │    │ Unavailable  │
+            │    └──────┬───────┘
+            │           │ Timeout exceeded
+            │           ▼
+            │    ┌──────────────┐
+            └────│    Down      │────▶ Remove from pool
+                 └──────────────┘
+```
+
+---
+
+## Health Monitoring Architecture
+
+### Cluster Health Check Flow
+```
+┌─────────────────────────────────────────────────────────────┐
+│                   Shard Manager                              │
+│                                                              │
+│  ┌────────────────┐    ┌────────────────┐                   │
+│  │ Health Check   │───▶│ Node Status    │                   │
+│  │ Task           │    │ Tracker        │                   │
+│  └────────────────┘    └────────────────┘                   │
+│          │                     │                             │
+│          ▼                     ▼                             │
+│  ┌────────────────┐    ┌────────────────┐                   │
+│  │ Heartbeat      │    │ Metrics        │                   │
+│  │ Intervals      │    │ Recorder       │                   │
+│  └────────────────┘    └────────────────┘                   │
+└─────────────────────────────────────────────────────────────┘
+                         │
+                         ▼
+┌─────────────────────────────────────────────────────────────┐
+│                   Status Transitions                         │
+│                                                              │
+│  time_since_heartbeat < timeout        → Healthy            │
+│  timeout < time < timeout*2            → Degraded           │
+│  timeout*2 < time < timeout*5          → Unavailable        │
+│  time > timeout*5                      → Failed             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Rebalancing Architecture
+```
+┌─────────────────────────────────────────────────────────────┐
+│                 Cluster Rebalancing                          │
+│                                                              │
+│  Step 1: Calculate Load Distribution                        │
+│  ┌────────────┐ ┌────────────┐ ┌────────────┐              │
+│  │ Node A: 40%│ │ Node B: 35%│ │ Node C: 25%│              │
+│  └────────────┘ └────────────┘ └────────────┘              │
+│                                                              │
+│  Step 2: Identify Imbalance                                 │
+│  Target: 33% each                                           │
+│  Node A: +7% (overloaded)                                   │
+│  Node C: -8% (underloaded)                                  │
+│                                                              │
+│  Step 3: Plan Migrations                                    │
+│  ┌────────────────────────────────────────────────────┐     │
+│  │  Move 7 vnodes: Node A ────────────────▶ Node C    │     │
+│  └────────────────────────────────────────────────────┘     │
+│                                                              │
+│  Step 4: Execute with Minimal Disruption                    │
+│  - Replicate data first                                     │
+│  - Update hash ring                                         │
+│  - Remove old replicas                                      │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Node Specialization Architecture
+
+### Specialization Types
+```rust
+pub enum NodeSpecialization {
+    SpeedRunner {
+        target_latency_ms: 1,        // Sub-millisecond queries
+        cache_strategy: CacheStrategy::Aggressive,
+    },
+    ReconstructionSpec {
+        zk_capability: ZKCapability::Full,
+        merkle_cache_size: 1_000_000,
+    },
+    CacheOptimizer {
+        hot_data_threshold: 10_000,
+        eviction_policy: EvictionPolicy::LRU,
+    },
+    ArchiveNode {
+        retention_days: 365,
+        compression_level: 9,
+    },
+}
+```
+
+### Query Routing by Specialization
+```
+                    ┌─────────────┐
+                    │Query Router │
+                    └──────┬──────┘
+                           │
+          ┌────────────────┼────────────────┐
+          ▼                ▼                ▼
+   ┌─────────────┐  ┌─────────────┐  ┌─────────────┐
+   │ Real-time   │  │ Historical  │  │ Compressed  │
+   │ Query       │  │ Query       │  │ Account     │
+   └──────┬──────┘  └──────┬──────┘  └──────┬──────┘
+          │                │                │
+          ▼                ▼                ▼
+   ┌─────────────┐  ┌─────────────┐  ┌─────────────┐
+   │SpeedRunners │  │ArchiveNodes │  │Reconstruction│
+   │             │  │             │  │Specialists  │
+   └─────────────┘  └─────────────┘  └─────────────┘
+```

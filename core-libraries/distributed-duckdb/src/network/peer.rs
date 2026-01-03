@@ -178,9 +178,9 @@ impl Peer {
                 match bincode::serialize(&message) {
                     Ok(data) => {
                         let socket = socket.read().await;
-                        if let Err(e) = socket.send(&data) {
-                            error!("Failed to send message to peer {}: {}", peer_id, e);
-                            *status.write().await = PeerStatus::Failed(e.to_string());
+                        if let Err((_msg, err)) = socket.send(&data) {
+                            error!("Failed to send message to peer {}: {:?}", peer_id, err);
+                            *status.write().await = PeerStatus::Failed(format!("{:?}", err));
                             break;
                         }
                     }

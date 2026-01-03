@@ -1,7 +1,7 @@
 //! Light Client for StreamSync API consumers
 
 use crate::economics::PaymentToken;
-use reqwest::{Client, Response};
+use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::time::Duration;

@@ -761,7 +761,7 @@ mod tests {
         ];
 
         let consistency = idl_sync.calculate_pattern_consistency(&patterns);
-        assert_eq!(consistency, 0.85); // (0.9 + 0.8) / 2
+        assert!((consistency - 0.85).abs() < 0.0001); // (0.9 + 0.8) / 2
     }
 
     #[tokio::test]
@@ -776,7 +776,7 @@ mod tests {
 
         assert!(result.is_err());
         match result.unwrap_err() {
-            IDLError::InsufficientConfidence { achieved, required } => {
+            IDLError::InsufficientConfidence { achieved, required, .. } => {
                 assert_eq!(achieved, 0.0);
                 assert_eq!(required, 0.8);
             },

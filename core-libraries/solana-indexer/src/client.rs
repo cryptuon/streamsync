@@ -2,7 +2,7 @@ use anyhow::{anyhow, Result};
 use solana_client::rpc_client::RpcClient;
 use std::sync::Arc;
 use tokio::sync::Semaphore;
-use tracing::{debug, info, warn};
+use tracing::{debug, info};
 
 use crate::config::SolanaConfig;
 use crate::types::{IndexedBlock, IndexedTransaction, IndexingStats};

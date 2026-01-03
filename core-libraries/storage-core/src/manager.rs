@@ -1,13 +1,12 @@
 use anyhow::{anyhow, Result};
 use std::sync::Arc;
 use tokio::sync::{broadcast, RwLock};
-use tokio::time::interval;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, info, warn};
 use uuid::Uuid;
 
 use crate::backend::{DuckDBBackend, StorageBackend};
 use crate::cache::{CacheStats, StorageCache};
-use crate::compression::{BatchCompressor, CompressionEngine, CompressionStats};
+use crate::compression::{BatchCompressor, CompressionStats};
 use crate::config::StorageConfig;
 use crate::query::{QueryEngine, QueryResult, QueryStats};
 use crate::schema::SchemaManager;
@@ -163,7 +162,7 @@ impl StorageManager {
 
         debug!("Inserting {} blocks", blocks.len());
 
-        let processed_blocks = if let Some(compressor) = &self.compressor {
+        let processed_blocks = if let Some(_compressor) = &self.compressor {
             // For demonstration, we don't actually compress individual records
             // but we could compress batches before storage
             blocks

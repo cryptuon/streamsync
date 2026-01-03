@@ -16,7 +16,7 @@ use chrono;
 // Import core libraries
 use networking_core::{NetworkTransport, config::NetworkConfig};
 use networking_core::transport::{NngTransport, TransportStats};
-use networking_core::discovery::{DiscoveryManager, DiscoveryMethod, NetworkTopology, DiscoveredPeer, DiscoveryEvent};
+use networking_core::discovery::{DiscoveryManager, DiscoveryMethod, NetworkTopology};
 use networking_core::discovery::DiscoveryConfig;
 use sharding_core::{ShardManager, ShardConfig, config::HashFunctionType, manager::ClusterStats};
 use solana_indexer::{TransactionIndexer, SolanaConfig, IndexingStats};
@@ -25,7 +25,19 @@ use storage_core::manager::StorageStats;
 
 use crate::config::NodeConfig;
 use crate::consensus::{ConsensusCoordinator, ConsensusStats};
-use crate::query_router::{QueryRouter, RoutingStrategy, RouteTarget, QueryRouterStats};
+use crate::query_router::{QueryRouter, RoutingStrategy, RouteTarget};
+
+/// Shared application state for API endpoints
+#[derive(Clone)]
+pub struct AppState {
+    pub node_info: NodeInfo,
+    pub transaction_indexer: Option<Arc<TransactionIndexer>>,
+    pub storage_manager: Option<Arc<RwLock<StorageManager>>>,
+    pub consensus_coordinator: Option<Arc<RwLock<ConsensusCoordinator>>>,
+    pub discovery_manager: Option<Arc<RwLock<DiscoveryManager>>>,
+    pub query_router: Option<Arc<RwLock<QueryRouter>>>,
+    pub shard_manager: Option<Arc<ShardManager>>,
+}
 
 /// Main StreamSync node that orchestrates all components
 pub struct StreamSyncNode {
@@ -168,7 +180,7 @@ impl StreamSyncNode {
             }
         }
 
-        if let Some(network_transport) = &self.network_transport {
+        if let Some(_network_transport) = &self.network_transport {
             info!("Stopping network transport...");
             // NngTransport doesn't have a disconnect method, so we just log
         }
@@ -462,11 +474,21 @@ impl StreamSyncNode {
         info!("Starting HTTP API server...");
 
         let bind_address = format!("{}:{}", "0.0.0.0", self.config.node.api_port);
-        let node_clone = Arc::new(RwLock::new(self.get_node_info()));
+
+        // Create full app state with all components
+        let app_state = AppState {
+            node_info: self.get_node_info(),
+            transaction_indexer: self.transaction_indexer.clone(),
+            storage_manager: self.storage_manager.clone(),
+            consensus_coordinator: self.consensus_coordinator.clone(),
+            discovery_manager: self.discovery_manager.clone(),
+            query_router: self.query_router.clone(),
+            shard_manager: self.shard_manager.clone(),
+        };
 
         let bind_addr_clone = bind_address.clone();
         let handle = tokio::spawn(async move {
-            let app = create_api_router(node_clone);
+            let app = create_api_router(app_state);
             let listener = tokio::net::TcpListener::bind(&bind_addr_clone).await.unwrap();
             info!("HTTP API server listening on {}", bind_addr_clone);
             axum::serve(listener, app).await.unwrap();
@@ -650,7 +672,7 @@ impl std::fmt::Display for NodeStatus {
 }
 
 /// Create a simple API router for the node
-fn create_api_router(node_info: Arc<RwLock<NodeInfo>>) -> Router {
+fn create_api_router(app_state: AppState) -> Router {
     Router::new()
         .route("/health", get(health_check))
         .route("/status", get(node_status))
@@ -666,7 +688,8 @@ fn create_api_router(node_info: Arc<RwLock<NodeInfo>>) -> Router {
         .route("/discovery/topology", get(discovery_topology))
         .route("/query/router/stats", get(query_router_stats))
         .route("/query/router/targets", get(query_router_targets))
-        .with_state(node_info)
+        .route("/shards/stats", get(shard_stats))
+        .with_state(app_state)
 }
 
 /// Health check endpoint
@@ -678,169 +701,326 @@ async fn health_check() -> Json<Value> {
 }
 
 /// Node status endpoint
-async fn node_status(State(node_info): State<Arc<RwLock<NodeInfo>>>) -> Json<Value> {
-    let info = node_info.read().await;
+async fn node_status(State(state): State<AppState>) -> Json<Value> {
     Json(json!({
-        "node_id": info.node_id,
-        "role": info.role,
+        "node_id": state.node_info.node_id,
+        "role": state.node_info.role,
         "status": "running",
+        "components": {
+            "indexer": state.transaction_indexer.is_some(),
+            "storage": state.storage_manager.is_some(),
+            "consensus": state.consensus_coordinator.is_some(),
+            "discovery": state.discovery_manager.is_some(),
+            "query_router": state.query_router.is_some(),
+            "sharding": state.shard_manager.is_some()
+        },
         "timestamp": chrono::Utc::now().to_rfc3339()
     }))
 }
 
 /// Node info endpoint
-async fn node_info_endpoint(State(node_info): State<Arc<RwLock<NodeInfo>>>) -> Json<Value> {
-    let info = node_info.read().await;
+async fn node_info_endpoint(State(state): State<AppState>) -> Json<Value> {
     Json(json!({
-        "node_id": info.node_id,
-        "role": info.role,
+        "node_id": state.node_info.node_id,
+        "role": state.node_info.role,
         "version": "0.1.0",
         "capabilities": {
             "networking": true,
-            "sharding": true,
+            "sharding": state.shard_manager.is_some(),
             "api": true,
-            "solana_indexing": true
+            "solana_indexing": state.transaction_indexer.is_some(),
+            "consensus": state.consensus_coordinator.is_some()
         }
     }))
 }
 
 /// Indexing statistics endpoint
-async fn indexing_stats() -> Json<Value> {
-    Json(json!({
-        "status": "active",
-        "note": "Indexing stats endpoint - implementation pending node access pattern",
-        "timestamp": chrono::Utc::now().to_rfc3339()
-    }))
+async fn indexing_stats(State(state): State<AppState>) -> Json<Value> {
+    match &state.transaction_indexer {
+        Some(indexer) => {
+            let stats = indexer.get_stats().await;
+            Json(json!({
+                "status": "active",
+                "transactions_indexed": stats.transactions_indexed,
+                "blocks_indexed": stats.blocks_indexed,
+                "last_indexed_slot": stats.last_indexed_slot,
+                "indexing_rate_per_second": stats.indexing_rate_per_second,
+                "errors_encountered": stats.errors_encountered,
+                "timestamp": chrono::Utc::now().to_rfc3339()
+            }))
+        }
+        None => Json(json!({
+            "status": "disabled",
+            "message": "Transaction indexer not enabled",
+            "timestamp": chrono::Utc::now().to_rfc3339()
+        }))
+    }
 }
 
 /// Latest indexed data endpoint
-async fn latest_indexed_data() -> Json<Value> {
-    Json(json!({
-        "status": "active",
-        "note": "Latest data endpoint - implementation pending node access pattern",
-        "timestamp": chrono::Utc::now().to_rfc3339()
-    }))
+async fn latest_indexed_data(State(state): State<AppState>) -> Json<Value> {
+    match &state.transaction_indexer {
+        Some(indexer) => {
+            let stats = indexer.get_stats().await;
+            Json(json!({
+                "status": "active",
+                "last_indexed_slot": stats.last_indexed_slot,
+                "transactions_indexed": stats.transactions_indexed,
+                "blocks_indexed": stats.blocks_indexed,
+                "timestamp": chrono::Utc::now().to_rfc3339()
+            }))
+        }
+        None => Json(json!({
+            "status": "disabled",
+            "message": "Transaction indexer not enabled",
+            "timestamp": chrono::Utc::now().to_rfc3339()
+        }))
+    }
 }
 
 /// Storage statistics endpoint
-async fn storage_stats() -> Json<Value> {
-    Json(json!({
-        "status": "active",
-        "note": "Storage stats endpoint - implementation pending node access pattern",
-        "timestamp": chrono::Utc::now().to_rfc3339()
-    }))
+async fn storage_stats(State(state): State<AppState>) -> Json<Value> {
+    match &state.storage_manager {
+        Some(sm) => {
+            let manager = sm.read().await;
+            match manager.get_storage_stats().await {
+                Ok(stats) => Json(json!({
+                    "status": "active",
+                    "total_records": stats.total_records,
+                    "total_queries": stats.total_queries,
+                    "storage_size_bytes": stats.storage_size_bytes,
+                    "storage_size_mb": stats.storage_size_bytes as f64 / 1024.0 / 1024.0,
+                    "compression_ratio": stats.compression_ratio,
+                    "uptime_seconds": stats.uptime_seconds,
+                    "timestamp": chrono::Utc::now().to_rfc3339()
+                })),
+                Err(e) => Json(json!({
+                    "status": "error",
+                    "error": e.to_string(),
+                    "timestamp": chrono::Utc::now().to_rfc3339()
+                }))
+            }
+        }
+        None => Json(json!({
+            "status": "disabled",
+            "message": "Storage manager not initialized",
+            "timestamp": chrono::Utc::now().to_rfc3339()
+        }))
+    }
 }
 
 /// Storage query endpoint
-async fn storage_query() -> Json<Value> {
-    Json(json!({
-        "status": "active",
-        "note": "Storage query endpoint - implementation pending node access pattern",
-        "example_queries": [
-            "SELECT * FROM transactions WHERE success = true LIMIT 10",
-            "SELECT COUNT(*) FROM blocks WHERE block_time > '2024-01-01'",
-            "SELECT * FROM transactions WHERE slot = 12345"
-        ],
-        "timestamp": chrono::Utc::now().to_rfc3339()
-    }))
+async fn storage_query(State(state): State<AppState>) -> Json<Value> {
+    match &state.storage_manager {
+        Some(_) => Json(json!({
+            "status": "active",
+            "message": "Use POST /storage/query with SQL body for queries",
+            "example_queries": [
+                "SELECT * FROM transactions WHERE success = true LIMIT 10",
+                "SELECT COUNT(*) FROM blocks WHERE block_time > '2024-01-01'",
+                "SELECT * FROM transactions WHERE slot = 12345"
+            ],
+            "timestamp": chrono::Utc::now().to_rfc3339()
+        })),
+        None => Json(json!({
+            "status": "disabled",
+            "message": "Storage manager not initialized",
+            "timestamp": chrono::Utc::now().to_rfc3339()
+        }))
+    }
 }
 
 /// Consensus statistics endpoint
-async fn consensus_stats() -> Json<Value> {
-    Json(json!({
-        "status": "active",
-        "note": "Consensus stats endpoint - implementation pending node access pattern",
-        "metrics": {
-            "total_proposals": 0,
-            "successful_proposals": 0,
-            "failed_proposals": 0,
-            "average_consensus_time_ms": 0.0,
-            "current_view": 0,
-            "is_leader": false,
-            "participants": []
-        },
-        "timestamp": chrono::Utc::now().to_rfc3339()
-    }))
+async fn consensus_stats(State(state): State<AppState>) -> Json<Value> {
+    match &state.consensus_coordinator {
+        Some(cc) => {
+            let coordinator = cc.read().await;
+            let stats = coordinator.get_stats().await;
+            Json(json!({
+                "status": "active",
+                "total_proposals": stats.total_proposals,
+                "successful_proposals": stats.successful_proposals,
+                "failed_proposals": stats.failed_proposals,
+                "view_changes": stats.view_changes,
+                "current_view": stats.current_view,
+                "is_leader": stats.is_leader,
+                "average_consensus_time_ms": stats.average_consensus_time_ms,
+                "participants": stats.participants,
+                "timestamp": chrono::Utc::now().to_rfc3339()
+            }))
+        }
+        None => Json(json!({
+            "status": "disabled",
+            "message": "Consensus not enabled",
+            "timestamp": chrono::Utc::now().to_rfc3339()
+        }))
+    }
 }
 
 /// Consensus status endpoint
-async fn consensus_status() -> Json<Value> {
-    Json(json!({
-        "status": "active",
-        "note": "Consensus status endpoint - implementation pending node access pattern",
-        "consensus_enabled": true,
-        "mode": "single-node",
-        "last_decision": null,
-        "timestamp": chrono::Utc::now().to_rfc3339()
-    }))
+async fn consensus_status(State(state): State<AppState>) -> Json<Value> {
+    match &state.consensus_coordinator {
+        Some(cc) => {
+            let coordinator = cc.read().await;
+            let stats = coordinator.get_stats().await;
+            Json(json!({
+                "status": "active",
+                "consensus_enabled": true,
+                "mode": if stats.participants.len() > 1 { "multi-node" } else { "single-node" },
+                "current_view": stats.current_view,
+                "is_leader": stats.is_leader,
+                "participants_count": stats.participants.len(),
+                "timestamp": chrono::Utc::now().to_rfc3339()
+            }))
+        }
+        None => Json(json!({
+            "status": "disabled",
+            "consensus_enabled": false,
+            "timestamp": chrono::Utc::now().to_rfc3339()
+        }))
+    }
 }
 
 /// Discovery peers endpoint
-async fn discovery_peers() -> Json<Value> {
-    Json(json!({
-        "status": "active",
-        "note": "Discovery peers endpoint - implementation pending node access pattern",
-        "peers": [],
-        "total_peers": 0,
-        "active_peers": 0,
-        "timestamp": chrono::Utc::now().to_rfc3339()
-    }))
+async fn discovery_peers(State(state): State<AppState>) -> Json<Value> {
+    match &state.discovery_manager {
+        Some(dm) => {
+            let discovery = dm.read().await;
+            let peers = discovery.get_peers().await;
+            let active_count = peers.iter().filter(|p| p.reputation > 0.5).count();
+            Json(json!({
+                "status": "active",
+                "total_peers": peers.len(),
+                "active_peers": active_count,
+                "peers": peers.iter().map(|p| json!({
+                    "peer_id": p.peer_id,
+                    "addresses": p.addresses.iter().map(|a| a.to_string()).collect::<Vec<_>>(),
+                    "reputation": p.reputation,
+                    "discovered_at": format!("{:?}", p.discovered_at)
+                })).collect::<Vec<_>>(),
+                "timestamp": chrono::Utc::now().to_rfc3339()
+            }))
+        }
+        None => Json(json!({
+            "status": "disabled",
+            "message": "Discovery manager not initialized",
+            "peers": [],
+            "timestamp": chrono::Utc::now().to_rfc3339()
+        }))
+    }
 }
 
 /// Discovery statistics endpoint
-async fn discovery_stats() -> Json<Value> {
-    Json(json!({
-        "status": "active",
-        "note": "Discovery stats endpoint - implementation pending node access pattern",
-        "metrics": {
-            "total_peers_discovered": 0,
-            "active_peers": 0,
-            "failed_discovery_attempts": 0,
-            "network_formation_time": null,
-            "discovery_methods_active": 2
-        },
-        "timestamp": chrono::Utc::now().to_rfc3339()
-    }))
+async fn discovery_stats(State(state): State<AppState>) -> Json<Value> {
+    match &state.discovery_manager {
+        Some(dm) => {
+            let discovery = dm.read().await;
+            let stats = discovery.get_stats().await;
+            Json(json!({
+                "status": "active",
+                "total_peers_discovered": stats.total_peers_discovered,
+                "active_peers": stats.active_peers,
+                "failed_discovery_attempts": stats.failed_discovery_attempts,
+                "network_formation_time": stats.network_formation_time.map(|t| format!("{:?}", t)),
+                "discovery_methods_active": stats.discovery_methods_active,
+                "timestamp": chrono::Utc::now().to_rfc3339()
+            }))
+        }
+        None => Json(json!({
+            "status": "disabled",
+            "message": "Discovery manager not initialized",
+            "timestamp": chrono::Utc::now().to_rfc3339()
+        }))
+    }
 }
 
 /// Discovery topology endpoint
-async fn discovery_topology() -> Json<Value> {
-    Json(json!({
-        "status": "active",
-        "note": "Discovery topology endpoint - implementation pending node access pattern",
-        "topology_type": "small_world",
-        "network_formed": false,
-        "recommended_connections": [],
-        "timestamp": chrono::Utc::now().to_rfc3339()
-    }))
+async fn discovery_topology(State(state): State<AppState>) -> Json<Value> {
+    match &state.discovery_manager {
+        Some(dm) => {
+            let discovery = dm.read().await;
+            let peers = discovery.get_peers().await;
+            Json(json!({
+                "status": "active",
+                "node_count": peers.len(),
+                "active_peers": peers.iter().filter(|p| p.reputation > 0.5).count(),
+                "timestamp": chrono::Utc::now().to_rfc3339()
+            }))
+        }
+        None => Json(json!({
+            "status": "disabled",
+            "message": "Discovery manager not initialized",
+            "timestamp": chrono::Utc::now().to_rfc3339()
+        }))
+    }
 }
 
 /// Query router statistics endpoint
-async fn query_router_stats() -> Json<Value> {
-    Json(json!({
-        "status": "active",
-        "note": "Query router stats endpoint - implementation pending node access pattern",
-        "metrics": {
-            "total_queries_routed": 0,
-            "successful_queries": 0,
-            "failed_queries": 0,
-            "average_response_time_ms": 0.0,
-            "active_targets": 0,
-            "load_balance_decisions": 0
-        },
-        "timestamp": chrono::Utc::now().to_rfc3339()
-    }))
+async fn query_router_stats(State(state): State<AppState>) -> Json<Value> {
+    match &state.query_router {
+        Some(qr) => {
+            let router = qr.read().await;
+            let stats = router.get_stats().await;
+            Json(json!({
+                "status": "active",
+                "total_queries_routed": stats.total_queries_routed,
+                "successful_queries": stats.successful_queries,
+                "failed_queries": stats.failed_queries,
+                "average_response_time_ms": stats.average_response_time_ms,
+                "active_targets": stats.active_targets,
+                "timestamp": chrono::Utc::now().to_rfc3339()
+            }))
+        }
+        None => Json(json!({
+            "status": "disabled",
+            "message": "Query router not initialized",
+            "timestamp": chrono::Utc::now().to_rfc3339()
+        }))
+    }
 }
 
 /// Query router targets endpoint
-async fn query_router_targets() -> Json<Value> {
-    Json(json!({
-        "status": "active",
-        "note": "Query router targets endpoint - implementation pending node access pattern",
-        "targets": [],
-        "routing_strategy": "round_robin",
-        "total_targets": 0,
-        "available_targets": 0,
-        "timestamp": chrono::Utc::now().to_rfc3339()
-    }))
+async fn query_router_targets(State(state): State<AppState>) -> Json<Value> {
+    match &state.query_router {
+        Some(qr) => {
+            let router = qr.read().await;
+            let stats = router.get_stats().await;
+            Json(json!({
+                "status": "active",
+                "total_targets": stats.active_targets,
+                "available_targets": stats.active_targets,
+                "total_queries_routed": stats.total_queries_routed,
+                "successful_queries": stats.successful_queries,
+                "timestamp": chrono::Utc::now().to_rfc3339()
+            }))
+        }
+        None => Json(json!({
+            "status": "disabled",
+            "message": "Query router not initialized",
+            "targets": [],
+            "timestamp": chrono::Utc::now().to_rfc3339()
+        }))
+    }
+}
+
+/// Shard statistics endpoint
+async fn shard_stats(State(state): State<AppState>) -> Json<Value> {
+    match &state.shard_manager {
+        Some(sm) => {
+            let stats = sm.get_cluster_stats().await;
+            Json(json!({
+                "status": "active",
+                "total_nodes": stats.total_nodes,
+                "healthy_nodes": stats.healthy_nodes,
+                "virtual_nodes": stats.virtual_nodes,
+                "replication_factor": stats.replication_factor,
+                "timestamp": chrono::Utc::now().to_rfc3339()
+            }))
+        }
+        None => Json(json!({
+            "status": "disabled",
+            "message": "Shard manager not initialized",
+            "timestamp": chrono::Utc::now().to_rfc3339()
+        }))
+    }
 }

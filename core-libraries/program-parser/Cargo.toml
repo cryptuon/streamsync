@@ -25,12 +25,12 @@ dashmap = { workspace = true }
 ahash = { workspace = true }
 
 # SPL Token specific
-spl-token = "4.0"
-spl-associated-token-account = "2.2"
+spl-token = "7.0"
+spl-associated-token-account = "6.0"
 
 # Metaplex specific
-mpl-token-metadata = "4.1"
-mpl-bubblegum = "1.4"
+mpl-token-metadata = "5.0"
+mpl-bubblegum = "2.0"
 
 # Math for numerical parsing
 num-traits = "0.2"

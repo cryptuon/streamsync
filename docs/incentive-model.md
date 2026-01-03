@@ -2,6 +2,8 @@
 
 How to align individual node incentives with network-wide performance goals while ensuring long-term sustainability.
 
+> **See also**: [Token Economics](token-economics.md) for complete $STRM token details, staking, and smart contract architecture.
+
 ## Core Principle: Performance-Based Economics
 
 Unlike traditional blockchain networks that reward consensus participation, this network rewards **performance outcomes**:
@@ -11,66 +13,50 @@ Unlike traditional blockchain networks that reward consensus participation, this
 - **Efficiency**: Better cache hit ratios and resource utilization earn more
 - **Reliability**: Consistent uptime and performance earn reputation bonuses
 
-## Multi-Token Economic Model
+## $STRM Token Economic Model
 
-### Primary Token: QUERY ($QUERY)
-Used for query payments and basic network operations:
+### Payment Token: $STRM
+Used for query payments and network operations:
 
 ```rust
-pub struct QueryPayment {
-    base_fee: u64,              // Base cost per query type
-    performance_multiplier: f64, // Bonus for sub-target response times
-    complexity_factor: f64,      // Additional cost for expensive queries
-    priority_bonus: u64,         // Optional expedited processing
+pub enum PaymentToken {
+    STRM,           // Native token - lowest fees
+    SOL,            // Solana native - convenient
+    USDC,           // Stablecoin - predictable costs
+    SPL(String),    // Custom SPL tokens
 }
 
-impl QueryPayment {
-    pub fn calculate_total_cost(&self) -> u64 {
-        let base_cost = self.base_fee as f64;
-        let performance_cost = base_cost * self.performance_multiplier;
-        let complexity_cost = performance_cost * self.complexity_factor;
-
-        (complexity_cost as u64) + self.priority_bonus
-    }
+pub struct RequestCost {
+    base_cost: f64,              // Base cost per query type
+    complexity_multiplier: f64,   // 1.0x - 5.0x based on query
+    data_size_multiplier: f64,    // Based on response size
+    priority_multiplier: f64,     // Optional priority boost
+    total_cost: f64,
+    token: PaymentToken,
 }
 ```
 
-### Secondary Token: COMPUTE ($COMP)
-Rewards for expensive computational work (ZK reconstruction, ML training):
+### Specialization Bonuses
+Rewards for specialized computational capabilities:
 
 ```rust
-pub enum ComputeReward {
-    ZKReconstruction {
-        difficulty: ReconstructionDifficulty,
-        accuracy_verified: bool,
-        computation_time: Duration,
+pub enum NodeSpecialization {
+    SpeedRunner {
+        target_latency_ms: u32,    // Sub-1ms capability
+        bonus: 1.3,                // +30% rewards
     },
-    MLModelTraining {
-        model_type: ModelType,
-        improvement_score: f64,
-        training_cost: ComputeUnits,
+    ReconstructionSpec {
+        zk_capability: ZKCapability,
+        bonus: 2.0,                // +100% rewards
     },
-    IDLBehaviorAnalysis {
-        transactions_analyzed: u64,
-        patterns_discovered: u32,
-        consensus_agreement: f64,
+    CacheOptimizer {
+        memory_capacity_gb: u64,
+        bonus: 1.5,                // +50% rewards
     },
-}
-
-impl ComputeReward {
-    pub fn calculate_comp_reward(&self) -> u64 {
-        match self {
-            ComputeReward::ZKReconstruction { difficulty, accuracy_verified, .. } => {
-                let base_reward = difficulty.base_reward();
-                if *accuracy_verified {
-                    base_reward * 2 // Double reward for verified accuracy
-                } else {
-                    base_reward / 2 // Reduced reward pending verification
-                }
-            },
-            // ... other reward calculations
-        }
-    }
+    ArchiveNode {
+        storage_capacity_tb: u64,
+        bonus: 1.2,                // +20% rewards
+    },
 }
 ```
 

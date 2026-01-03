@@ -1,0 +1,162 @@
+# StreamSync Documentation
+# Build with: mkdocs build
+# Serve locally: mkdocs serve
+
+site_name: StreamSync
+site_description: High-Performance Decentralized Indexing Network for Solana
+site_author: StreamSync Team
+site_url: https://streamsync.io/docs
+
+# Repository
+repo_name: streamsync
+repo_url: https://github.com/your-org/streamsync
+edit_uri: edit/main/documentation/
+
+# Documentation source
+docs_dir: documentation
+site_dir: site
+
+# Theme configuration
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: deep purple
+      accent: amber
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: deep purple
+      accent: amber
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.tabs.link
+    - content.code.copy
+  icon:
+    repo: fontawesome/brands/github
+  logo: assets/logo.svg
+  favicon: assets/favicon.ico
+
+# Plugins
+plugins:
+  - search:
+      separator: '[\s\-,:!=\[\]()"/]+|(?!\b)(?=[A-Z][a-z])|\.(?!\d)|&[lg]t;'
+  - minify:
+      minify_html: true
+
+# Extensions
+markdown_extensions:
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - toc:
+      permalink: true
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.betterem:
+      smart_enable: all
+  - pymdownx.caret
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.magiclink:
+      repo_url_shorthand: true
+      user: your-org
+      repo: streamsync
+  - pymdownx.mark
+  - pymdownx.smartsymbols
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tilde
+
+# Extra CSS/JS
+extra_css:
+  - stylesheets/extra.css
+
+extra_javascript:
+  - javascripts/mathjax.js
+  - https://polyfill.io/v3/polyfill.min.js?features=es6
+  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
+
+# Navigation
+nav:
+  - Home: index.md
+  - Getting Started:
+    - Quick Start: getting-started/quickstart.md
+    - Installation: getting-started/installation.md
+    - Configuration: getting-started/configuration.md
+  - Concepts:
+    - Overview: concepts/overview.md
+    - Economic Decentralization: concepts/economic-decentralization.md
+    - Racing Competition: concepts/racing-competition.md
+    - Node Specializations: concepts/node-specializations.md
+  - Token Economics:
+    - STRM Token: tokenomics/strm-token.md
+    - Staking: tokenomics/staking.md
+    - Rewards: tokenomics/rewards.md
+    - Pricing: tokenomics/pricing.md
+  - Architecture:
+    - System Overview: architecture/overview.md
+    - Core Libraries: architecture/core-libraries.md
+    - Gossip Protocol: architecture/gossip-protocol.md
+    - Distributed Queries: architecture/distributed-queries.md
+  - API Reference:
+    - Query API: api/query-api.md
+    - Node API: api/node-api.md
+    - Economics API: api/economics-api.md
+  - Operators:
+    - Running a Node: operators/running-a-node.md
+    - Node Types: operators/node-types.md
+    - Performance Tuning: operators/performance-tuning.md
+    - Monitoring: operators/monitoring.md
+  - Resources:
+    - Whitepaper: resources/whitepaper.md
+    - FAQ: resources/faq.md
+    - Glossary: resources/glossary.md
+    - Roadmap: resources/roadmap.md
+
+# Extra
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/your-org/streamsync
+    - icon: fontawesome/brands/twitter
+      link: https://twitter.com/streamsync
+    - icon: fontawesome/brands/discord
+      link: https://discord.gg/streamsync
+  analytics:
+    provider: google
+    property: G-XXXXXXXXXX
+  version:
+    provider: mike
+
+# Copyright
+copyright: Copyright &copy; 2024-2025 StreamSync Team

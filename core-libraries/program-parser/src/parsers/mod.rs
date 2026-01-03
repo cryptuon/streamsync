@@ -1,7 +1,7 @@
 //! Program-specific parsers
 
 use crate::{
-    error::{ParseError, ParseResult},
+    error::ParseError,
     types::*,
     detector::ProgramDetector,
     cache::ParseCache,

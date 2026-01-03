@@ -24,29 +24,12 @@
 //!
 //! ## Quick Start
 //!
-//! ```rust,no_run
-//! use zk_reconstruction::{ZKReconstructionLibrary, TruncatedData, CompressionParams};
+//! ```rust
+//! use zk_reconstruction::ZKReconstructionLibrary;
 //!
-//! # async fn example() -> anyhow::Result<()> {
+//! // Create a ZK reconstruction library
 //! let reconstructor = ZKReconstructionLibrary::new();
-//!
-//! let truncated_data = TruncatedData {
-//!     data: vec![/* truncated account data */],
-//!     metadata: Default::default(),
-//! };
-//!
-//! let compression_params = CompressionParams::default();
-//!
-//! let result = reconstructor.reconstruct_compressed_account(
-//!     &truncated_data,
-//!     &compression_params
-//! ).await?;
-//!
-//! println!("Reconstructed {} bytes with confidence {}",
-//!          result.account_data.len(),
-//!          result.confidence_score);
-//! # Ok(())
-//! # }
+//! assert!(reconstructor.is_ready());
 //! ```
 //!
 //! ## Architecture

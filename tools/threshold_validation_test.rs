@@ -2,7 +2,6 @@
 //! Tests the calibrated verification system against realistic Solana data patterns
 
 use zk_reconstruction::{
-    ZKReconstructionLibrary,
     types::{TruncatedData, CompressionParams, TruncationMetadata, CompressionType},
     adaptive_verification::AdaptiveVerifier,
 };
@@ -102,18 +101,24 @@ async fn test_metaplex_pattern() -> Result<()> {
 
     let truncated_data = TruncatedData {
         data: metaplex_data.clone(),
-        metadata: AccountMetadata {
+        original_size_hint: Some(metaplex_data.len() * 800),
+        truncation_point: metaplex_data.len(),
+        metadata: TruncationMetadata {
             account: Pubkey::new_unique(),
             program_id: Pubkey::from_str("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s")?,
             slot: 250_000_000,
-            lamports: 5616720,
+            compression_type: CompressionType::Standard,
+            truncation_timestamp: std::time::SystemTime::now(),
         },
     };
 
     let compression_params = CompressionParams {
         compression_type: CompressionType::Standard,
         merkle_tree_height: 20,
-        compression_ratio: 2.0,
+        leaf_count: 1000,
+        root_hash: [0; 32],
+        compression_program: Pubkey::from_str("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s")?,
+        additional_params: std::collections::HashMap::new(),
     };
 
     // Create a realistic reconstruction result for Metaplex (higher expansion)
@@ -154,18 +159,24 @@ async fn test_jupiter_pattern() -> Result<()> {
 
     let truncated_data = TruncatedData {
         data: jupiter_data.clone(),
-        metadata: AccountMetadata {
+        original_size_hint: Some(jupiter_data.len() * 700),
+        truncation_point: jupiter_data.len(),
+        metadata: TruncationMetadata {
             account: Pubkey::new_unique(),
             program_id: Pubkey::from_str("JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4")?,
             slot: 250_000_000,
-            lamports: 1461600,
+            compression_type: CompressionType::Standard,
+            truncation_timestamp: std::time::SystemTime::now(),
         },
     };
 
     let compression_params = CompressionParams {
         compression_type: CompressionType::Standard,
         merkle_tree_height: 20,
-        compression_ratio: 2.0,
+        leaf_count: 1000,
+        root_hash: [0; 32],
+        compression_program: Pubkey::from_str("JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4")?,
+        additional_params: std::collections::HashMap::new(),
     };
 
     // Create a realistic reconstruction result for Jupiter
@@ -204,20 +215,27 @@ async fn test_state_compression_pattern() -> Result<()> {
     // Create state compression data
     let compression_data = vec![0, 1, 2]; // Very small input for high expansion
 
+    let compression_program = Pubkey::new_unique();
     let truncated_data = TruncatedData {
         data: compression_data.clone(),
-        metadata: AccountMetadata {
+        original_size_hint: Some(compression_data.len() * 1500),
+        truncation_point: compression_data.len(),
+        metadata: TruncationMetadata {
             account: Pubkey::new_unique(),
-            program_id: Pubkey::new_unique(), // Generic compression program
+            program_id: compression_program, // Generic compression program
             slot: 250_000_000,
-            lamports: 0,
+            compression_type: CompressionType::StateCompression,
+            truncation_timestamp: std::time::SystemTime::now(),
         },
     };
 
     let compression_params = CompressionParams {
         compression_type: CompressionType::StateCompression,
         merkle_tree_height: 20,
-        compression_ratio: 2.0,
+        leaf_count: 1000,
+        root_hash: [0; 32],
+        compression_program,
+        additional_params: std::collections::HashMap::new(),
     };
 
     // Create a realistic reconstruction result for State Compression (very high expansion)
@@ -225,9 +243,10 @@ async fn test_state_compression_pattern() -> Result<()> {
         account_data: vec![0u8; compression_data.len() * 1500], // 1500x expansion (within 2000.0 limit)
         confidence_score: 0.9,
         reconstruction_method: zk_reconstruction::types::ReconstructionMethod::Hybrid {
-            primary_method: Box::new(zk_reconstruction::types::ReconstructionMethod::MerkleTreeReconstruction),
-            fallback_method: Box::new(zk_reconstruction::types::ReconstructionMethod::ConstraintSolving),
-            confidence_threshold: 0.8,
+            methods: vec![
+                zk_reconstruction::types::ReconstructionMethod::MerkleTreeReconstruction,
+                zk_reconstruction::types::ReconstructionMethod::ConstraintSolving,
+            ],
         },
         verification_proof: None,
         reconstruction_time: std::time::Duration::from_millis(35),
@@ -260,20 +279,27 @@ async fn test_unknown_program_pattern() -> Result<()> {
     // Create unknown program data
     let unknown_data = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]; // 16 bytes
 
+    let unknown_program = Pubkey::new_unique();
     let truncated_data = TruncatedData {
         data: unknown_data.clone(),
-        metadata: AccountMetadata {
+        original_size_hint: Some(unknown_data.len() * 250),
+        truncation_point: unknown_data.len(),
+        metadata: TruncationMetadata {
             account: Pubkey::new_unique(),
-            program_id: Pubkey::new_unique(), // Unknown program
+            program_id: unknown_program, // Unknown program
             slot: 250_000_000,
-            lamports: 1000000,
+            compression_type: CompressionType::Standard,
+            truncation_timestamp: std::time::SystemTime::now(),
         },
     };
 
     let compression_params = CompressionParams {
         compression_type: CompressionType::Standard,
         merkle_tree_height: 20,
-        compression_ratio: 2.0,
+        leaf_count: 1000,
+        root_hash: [0; 32],
+        compression_program: unknown_program,
+        additional_params: std::collections::HashMap::new(),
     };
 
     // Create a realistic reconstruction result for unknown program (conservative limit)

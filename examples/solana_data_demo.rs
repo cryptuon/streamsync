@@ -4,6 +4,8 @@
 //! using the StreamSync libraries. It uses mock data based on real
 //! Solana program structures to avoid API compatibility issues.
 
+#![allow(dead_code)]
+
 use zk_reconstruction::{ZKReconstructionLibrary, types::{TruncatedData, CompressionParams, CompressionType, TruncationMetadata}};
 use idl_sync::IDLSyncLibrary;
 use solana_sdk::pubkey::Pubkey;

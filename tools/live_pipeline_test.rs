@@ -11,7 +11,7 @@ use zk_reconstruction::{
 use std::str::FromStr;
 use std::time::{Duration, SystemTime};
 use tracing::{info, warn, error};
-use anyhow::{Result, Context};
+use anyhow::Result;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -81,6 +81,7 @@ impl LivePipelineTester {
                 min_context_slot: None,
             },
             with_context: Some(false),
+            sort_results: None,
         };
 
         match self.rpc_client.get_program_accounts_with_config(&spl_token_program, config) {

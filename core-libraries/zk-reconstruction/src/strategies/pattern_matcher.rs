@@ -156,7 +156,7 @@ impl PatternMatcher {
     }
 
     /// Update pattern success statistics
-    fn update_pattern_statistics(&self, pattern_id: &str, success: bool) {
+    fn update_pattern_statistics(&self, _pattern_id: &str, _success: bool) {
         // In a real implementation, this would update pattern success rates
         // and potentially adjust the pattern ranking
     }

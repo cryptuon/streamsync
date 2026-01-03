@@ -2,7 +2,7 @@
 members = [
     "core-libraries/zk-reconstruction",
     "core-libraries/idl-sync",
-    # "core-libraries/distributed-duckdb", # Temporarily disabled due to compilation errors
+    "core-libraries/distributed-duckdb",
     "core-libraries/program-parser",
     "core-libraries/consensus-core",
     "core-libraries/networking-core",
@@ -42,12 +42,12 @@ duckdb = { version = "0.9", features = ["bundled"] }
 sqlx = { version = "0.7", features = ["runtime-tokio-rustls", "postgres", "chrono", "uuid"] }
 
 # Solana
-solana-client = "1.17"
-solana-sdk = "1.17"
-solana-account-decoder = "1.17"
-solana-transaction-status = "1.17"
-anchor-client = "0.29"
-anchor-lang = "0.29"
+solana-client = "2.1"
+solana-sdk = "2.1"
+solana-account-decoder = "2.1"
+solana-transaction-status = "2.1"
+anchor-client = "0.30"
+anchor-lang = "0.30"
 
 # Cryptography
 sha2 = "0.10"

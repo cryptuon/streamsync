@@ -117,7 +117,7 @@ pub enum MigrationUrgency {
     Low = 3,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 pub enum MigrationPriority {
     Emergency,
     High,
@@ -375,7 +375,7 @@ impl MigrationEngine {
             tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
             copied += chunk_size;
 
-            let progress = (copied as f64 / total_size as f64) * 40.0 + 30.0; // 30-70%
+            let _progress = (copied as f64 / total_size as f64) * 40.0 + 30.0; // 30-70%
             // Update progress would be called here in real implementation
         }
 

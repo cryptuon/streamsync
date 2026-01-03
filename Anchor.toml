@@ -1,0 +1,25 @@
+[features]
+seeds = false
+skip-lint = false
+
+[programs.localnet]
+strm_token = "STRMxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
+[programs.devnet]
+strm_token = "STRMxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
+[programs.mainnet]
+strm_token = "STRMxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
+[registry]
+url = "https://api.apr.dev"
+
+[provider]
+cluster = "localnet"
+wallet = "~/.config/solana/id.json"
+
+[scripts]
+test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
+
+[workspace]
+members = ["programs/*"]

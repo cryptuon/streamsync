@@ -508,7 +508,7 @@ impl LoadBalancer {
             }
         }
 
-        migrations.sort_by_key(|m| m.priority);
+        migrations.sort_by_key(|m| m.priority.clone());
         Ok(migrations)
     }
 

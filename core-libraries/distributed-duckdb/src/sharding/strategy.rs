@@ -53,10 +53,26 @@ impl ShardingStrategy {
 
         match &mut self.strategy {
             DistributionStrategy::ConsistentHash { virtual_nodes, hash_ring } => {
-                let virtual_nodes = *virtual_nodes;
-                let mut new_ring_entries = Vec::new();
-                self.add_to_hash_ring_vec(node_id, virtual_nodes, &mut new_ring_entries);
-                hash_ring.extend(new_ring_entries);
+                let virtual_nodes_count = *virtual_nodes;
+                // Generate new ring entries inline to avoid borrow issues
+                for i in 0..virtual_nodes_count {
+                    let key = format!("{}:{}", node_id, i);
+                    let hash = {
+                        use sha2::{Sha256, Digest};
+                        let mut hasher = Sha256::new();
+                        hasher.update(key.as_bytes());
+                        let result = hasher.finalize();
+                        u64::from_be_bytes([
+                            result[0], result[1], result[2], result[3],
+                            result[4], result[5], result[6], result[7]
+                        ])
+                    };
+                    hash_ring.push(HashRingEntry {
+                        hash,
+                        node_id,
+                        virtual_node_id: i,
+                    });
+                }
             }
             DistributionStrategy::Directory { mapping } => {
                 // Nodes can be added to directory dynamically
@@ -104,7 +120,7 @@ impl ShardingStrategy {
             DistributionStrategy::Directory { mapping } => {
                 self.directory_based_placement(key_range, data_size, replication_factor, mapping)
             }
-            DistributionStrategy::ConsistentHash { virtual_nodes, hash_ring } => {
+            DistributionStrategy::ConsistentHash { virtual_nodes: _, hash_ring } => {
                 self.consistent_hash_placement(key_range, data_size, replication_factor, hash_ring)
             }
         }
@@ -120,11 +136,11 @@ impl ShardingStrategy {
         num_buckets: u32,
     ) -> Result<PlacementResult> {
         let hash = self.compute_hash(&key_range.start, hash_function);
-        let bucket = (hash % num_buckets as u64) as u32;
+        let _bucket = (hash % num_buckets as u64) as u32;
 
         // Get available nodes sorted by capacity
         let mut candidates: Vec<_> = self.node_capacities.iter()
-            .map(|(id, capacity)| (*id, self.calculate_node_score(*id, data_size)))
+            .map(|(id, _capacity)| (*id, self.calculate_node_score(*id, data_size)))
             .collect();
 
         candidates.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());

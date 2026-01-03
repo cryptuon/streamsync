@@ -152,14 +152,14 @@ impl RevenueSharingManager {
     /// Start the revenue sharing manager
     pub async fn start(&mut self) -> Result<()> {
         // Start listening to economics events
-        let node_performance = self.node_performance.clone();
-        let event_sender = self.event_sender.clone();
+        let _node_performance = self.node_performance.clone();
+        let _event_sender = self.event_sender.clone();
         let mut economics_receiver = self.economics_receiver.resubscribe();
 
         tokio::spawn(async move {
             while let Ok(event) = economics_receiver.recv().await {
                 match event {
-                    EconomicsEvent::RevenueDistributed { total_amount, token, .. } => {
+                    EconomicsEvent::RevenueDistributed { total_amount: _, token: _, .. } => {
                         // Trigger revenue distribution
                         // This would be handled by the main distribution logic
                     }
@@ -304,7 +304,7 @@ impl RevenueSharingManager {
         match model {
             RevenueModel::EqualShare => {
                 let per_node_amount = total_amount / performances.len() as f64;
-                for (&node_id, performance) in performances {
+                for (&node_id, _performance) in performances {
                     rewards.push(NodeReward {
                         node_id,
                         period_id: Uuid::new_v4(), // Will be set by caller

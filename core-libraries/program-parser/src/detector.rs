@@ -1,7 +1,7 @@
 //! Program type detection logic
 
 use crate::{
-    error::{ParseError, ParseResult},
+    error::ParseResult,
     types::{DetectionResult, ProgramType, DetectionMethod},
 };
 use solana_sdk::pubkey::Pubkey;
@@ -200,7 +200,7 @@ impl ProgramDetector {
 
     fn detect_by_heuristics(
         &self,
-        program_id: &Pubkey,
+        _program_id: &Pubkey,
         instruction_data: &[u8],
         account_keys: &[Pubkey],
     ) -> Option<DetectionResult> {
@@ -263,7 +263,7 @@ impl ProgramDetector {
         account_keys.len() >= 2 && account_keys.len() <= 8
     }
 
-    fn looks_like_metaplex(&self, instruction_data: &[u8], account_keys: &[Pubkey]) -> bool {
+    fn looks_like_metaplex(&self, _instruction_data: &[u8], account_keys: &[Pubkey]) -> bool {
         // Metaplex operations typically involve many accounts (5-15)
         if account_keys.len() < 5 {
             return false;

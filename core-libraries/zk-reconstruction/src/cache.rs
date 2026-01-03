@@ -53,7 +53,7 @@ struct PatternCacheEntry {
 }
 
 #[derive(Debug, Clone, Default)]
-struct CacheStats {
+pub struct CacheStats {
     total_requests: u64,
     cache_hits: u64,
     cache_misses: u64,

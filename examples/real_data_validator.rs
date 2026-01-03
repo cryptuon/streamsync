@@ -3,6 +3,8 @@
 //! Adapts our validation framework to work with real Solana transaction data
 //! and demonstrates integration with actual blockchain data
 
+#![allow(dead_code)]
+
 use zk_reconstruction::{ZKReconstructionLibrary, types::{TruncatedData, CompressionParams, CompressionType, TruncationMetadata}};
 use idl_sync::IDLSyncLibrary;
 use solana_sdk::pubkey::Pubkey;

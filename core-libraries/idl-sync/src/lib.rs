@@ -31,27 +31,11 @@
 //!
 //! ## Quick Start
 //!
-//! ```rust,no_run
-//! use idl_sync::{IDLSyncLibrary, IDLAnalysisConfig};
-//! use solana_sdk::pubkey::Pubkey;
+//! ```rust
+//! use idl_sync::IDLSyncLibrary;
 //!
-//! # async fn example() -> anyhow::Result<()> {
-//! let mut analyzer = IDLSyncLibrary::new(IDLAnalysisConfig::default());
-//!
-//! let program_id = Pubkey::new_unique();
-//! let transaction_history = vec![/* historical transactions */];
-//!
-//! // Generate IDL from transaction history
-//! let generated_idl = analyzer.analyze_program_transactions(
-//!     &program_id,
-//!     &transaction_history
-//! ).await?;
-//!
-//! println!("Generated IDL with {} instructions and {} account types",
-//!          generated_idl.idl.instructions.len(),
-//!          generated_idl.idl.accounts.len());
-//! # Ok(())
-//! # }
+//! // Create a new IDL sync library
+//! let analyzer = IDLSyncLibrary::new();
 //! ```
 //!
 //! ## Performance

@@ -10,9 +10,7 @@ pub mod state;
 pub mod message_log;
 pub mod view_change;
 
-use anyhow::Result;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use uuid::Uuid;
 use chrono::{DateTime, Utc};
 

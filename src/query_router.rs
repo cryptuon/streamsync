@@ -2,16 +2,16 @@
 //!
 //! This module implements intelligent query routing that can distribute queries
 //! across the network based on various strategies including load balancing,
-//! data locality, and node capabilities.
+//! data locality, node capabilities, and racing competition.
 
 use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use tokio::sync::{broadcast, RwLock};
-use tokio::time::interval;
-use tracing::{debug, error, info, warn};
+use tokio::sync::{broadcast, mpsc, RwLock};
+use tokio::time::{interval, timeout};
+use tracing::{debug, info, warn};
 use uuid::Uuid;
 
 /// Query routing strategies
@@ -594,6 +594,228 @@ impl QueryRouter {
             }
         });
     }
+
+    /// Execute a racing query - multiple nodes compete to answer first
+    ///
+    /// Racing competition rules:
+    /// - 3-5 nodes are selected to race
+    /// - First correct answer wins (70% of reward)
+    /// - Two verifiers each get 15% of reward
+    /// - Query is considered successful when winner + 2 verifiers agree
+    pub async fn execute_racing_query<F, Fut>(
+        &self,
+        request: QueryRequest,
+        execute_on_node: F,
+    ) -> Result<RacingResult>
+    where
+        F: Fn(Uuid, QueryRequest) -> Fut + Send + Sync + Clone + 'static,
+        Fut: std::future::Future<Output = Result<QueryResponse>> + Send + 'static,
+    {
+        info!("Starting racing query for request {}", request.id);
+
+        // Select 3-5 racing candidates
+        let candidates = self.select_racing_candidates(3, 5).await?;
+        if candidates.len() < 3 {
+            return Err(anyhow!("Not enough nodes for racing (need at least 3, have {})", candidates.len()));
+        }
+
+        let candidate_count = candidates.len();
+        info!("Selected {} racing candidates", candidate_count);
+
+        // Create channel for receiving results
+        let (tx, mut rx) = mpsc::channel::<(Uuid, QueryResponse)>(candidate_count);
+
+        // Spawn parallel queries
+        let request_clone = request.clone();
+        for node_id in &candidates {
+            let tx = tx.clone();
+            let node_id = *node_id;
+            let req = request_clone.clone();
+            let execute_fn = execute_on_node.clone();
+
+            tokio::spawn(async move {
+                let start = Instant::now();
+                match execute_fn(node_id, req).await {
+                    Ok(mut response) => {
+                        response.processing_time_ms = start.elapsed().as_millis() as u64;
+                        let _ = tx.send((node_id, response)).await;
+                    }
+                    Err(e) => {
+                        warn!("Racing query failed on node {}: {}", node_id, e);
+                    }
+                }
+            });
+        }
+
+        // Drop our sender so channel closes when all senders done
+        drop(tx);
+
+        // Wait for first correct answer with timeout
+        let query_timeout = Duration::from_millis(request.timeout_ms);
+        let mut winner: Option<(Uuid, QueryResponse)> = None;
+        let mut verifiers: Vec<(Uuid, QueryResponse)> = Vec::new();
+        let mut all_responses: Vec<(Uuid, QueryResponse)> = Vec::new();
+
+        let receive_start = Instant::now();
+        while let Ok(Some((node_id, response))) = timeout(
+            query_timeout.saturating_sub(receive_start.elapsed()),
+            rx.recv()
+        ).await {
+            if !response.success {
+                debug!("Ignoring failed response from node {}", node_id);
+                continue;
+            }
+
+            all_responses.push((node_id, response.clone()));
+
+            if winner.is_none() {
+                // First successful response is tentative winner
+                winner = Some((node_id, response));
+                info!("Tentative winner: node {}", node_id);
+            } else if verifiers.len() < 2 {
+                // Check if this matches the winner's result
+                let winner_response = &winner.as_ref().unwrap().1;
+                if self.verify_result_match(&winner_response.results, &response.results) {
+                    verifiers.push((node_id, response));
+                    info!("Verifier {} confirmed result (total: {})", node_id, verifiers.len());
+
+                    // If we have winner + 2 verifiers, we're done
+                    if verifiers.len() >= 2 {
+                        break;
+                    }
+                } else {
+                    warn!("Node {} disagrees with winner - potential inconsistency", node_id);
+                }
+            }
+        }
+
+        // Validate we have enough consensus
+        if winner.is_none() {
+            return Err(anyhow!("No successful responses in racing query"));
+        }
+
+        let (winner_id, winner_response) = winner.unwrap();
+
+        if verifiers.len() < 2 {
+            warn!("Insufficient verifiers ({}/2) for racing query", verifiers.len());
+            // Still return result but with lower confidence
+        }
+
+        // Record query completion for all participating nodes
+        for (node_id, response) in &all_responses {
+            let success = *node_id == winner_id || verifiers.iter().any(|(v, _)| v == node_id);
+            self.record_query_completion(
+                request.id,
+                *node_id,
+                success,
+                response.processing_time_ms,
+            ).await?;
+        }
+
+        let verifier_ids: Vec<Uuid> = verifiers.iter().map(|(id, _)| *id).collect();
+
+        info!(
+            "Racing query complete: winner={}, verifiers={:?}, time={}ms",
+            winner_id,
+            verifier_ids,
+            winner_response.processing_time_ms
+        );
+
+        Ok(RacingResult {
+            request_id: request.id,
+            winner_id,
+            winner_response,
+            verifier_ids,
+            total_participants: all_responses.len(),
+            consensus_reached: verifiers.len() >= 2,
+        })
+    }
+
+    /// Select candidates for racing competition
+    async fn select_racing_candidates(&self, min_count: usize, max_count: usize) -> Result<Vec<Uuid>> {
+        let targets = self.targets.read().await;
+
+        let available: Vec<Uuid> = targets.values()
+            .filter(|t| t.available && t.success_rate > 0.8)
+            .map(|t| t.node_id)
+            .collect();
+
+        if available.len() < min_count {
+            return Err(anyhow!(
+                "Not enough available nodes for racing: need {}, have {}",
+                min_count, available.len()
+            ));
+        }
+
+        // Select up to max_count nodes, preferring those with lower latency
+        let mut candidates: Vec<_> = targets.values()
+            .filter(|t| available.contains(&t.node_id))
+            .cloned()
+            .collect();
+
+        // Sort by latency (lower is better)
+        candidates.sort_by(|a, b| {
+            a.avg_response_time_ms.partial_cmp(&b.avg_response_time_ms).unwrap()
+        });
+
+        Ok(candidates.into_iter()
+            .take(max_count)
+            .map(|t| t.node_id)
+            .collect())
+    }
+
+    /// Verify that two query results match
+    fn verify_result_match(&self, result1: &serde_json::Value, result2: &serde_json::Value) -> bool {
+        // Simple equality check - in production would use hash or merkle comparison
+        result1 == result2
+    }
+
+    /// Select verifier nodes (different from the racing winner)
+    pub async fn select_verifiers(&self, count: usize, exclude: &[Uuid]) -> Result<Vec<Uuid>> {
+        let targets = self.targets.read().await;
+
+        let verifiers: Vec<Uuid> = targets.values()
+            .filter(|t| t.available && !exclude.contains(&t.node_id))
+            .take(count)
+            .map(|t| t.node_id)
+            .collect();
+
+        if verifiers.len() < count {
+            return Err(anyhow!(
+                "Not enough verifier nodes: need {}, have {}",
+                count, verifiers.len()
+            ));
+        }
+
+        Ok(verifiers)
+    }
+}
+
+/// Result of a racing query
+#[derive(Debug, Clone)]
+pub struct RacingResult {
+    /// Original request ID
+    pub request_id: Uuid,
+    /// Winning node ID
+    pub winner_id: Uuid,
+    /// Winner's response
+    pub winner_response: QueryResponse,
+    /// Verifier node IDs
+    pub verifier_ids: Vec<Uuid>,
+    /// Total number of nodes that responded
+    pub total_participants: usize,
+    /// Whether consensus was reached (winner + 2 verifiers)
+    pub consensus_reached: bool,
+}
+
+impl RacingResult {
+    /// Calculate reward distribution
+    ///
+    /// Returns (winner_amount, verifier_amount) as basis points of total
+    pub fn reward_distribution(&self) -> (u16, u16) {
+        // Winner gets 70%, each verifier gets 15%
+        (7000, 1500)
+    }
 }
 
 impl Default for QueryRouterStats {
@@ -617,7 +839,7 @@ mod instant_as_secs {
     use serde::{Deserialize, Deserializer, Serialize, Serializer};
     use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
-    pub fn serialize<S>(instant: &Instant, serializer: S) -> Result<S::Ok, S::Error>
+    pub fn serialize<S>(_instant: &Instant, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {

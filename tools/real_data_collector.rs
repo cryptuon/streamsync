@@ -4,16 +4,15 @@
 //! for comprehensive testing of StreamSync libraries
 
 use solana_client::rpc_client::RpcClient;
-use solana_client::rpc_config::{RpcBlockConfig, RpcTransactionConfig};
+use solana_client::rpc_config::RpcBlockConfig;
 use solana_sdk::commitment_config::CommitmentConfig;
-use solana_transaction_status::{UiTransactionEncoding, TransactionDetails};
+use solana_transaction_status::{UiTransactionEncoding, TransactionDetails, EncodedTransaction, UiMessage, UiInstruction, UiParsedInstruction};
 use serde::{Serialize, Deserialize};
 use anyhow::{Result, Context};
-use tracing::{info, warn, error};
+use tracing::{info, warn};
 use std::collections::HashMap;
 use std::fs;
 use std::time::{SystemTime, Duration};
-use chrono::{DateTime, Utc};
 
 /// Real transaction data collected from Solana blockchain
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -172,7 +171,7 @@ impl RealDataCollector {
         let current_slot = self.get_current_slot().await?;
         info!("📍 Current slot: {}", current_slot);
 
-        let start_slot = if let Some((start, end)) = self.collection_config.target_slot_range {
+        let start_slot = if let Some((start, _end)) = self.collection_config.target_slot_range {
             std::cmp::min(start, current_slot)
         } else {
             current_slot.saturating_sub(self.collection_config.max_blocks_to_scan)
@@ -259,10 +258,11 @@ impl RealDataCollector {
             .context("Failed to fetch block")?;
 
         let mut block_transactions = Vec::new();
+        let block_time = block.block_time;
 
         if let Some(transactions) = block.transactions {
             for (tx_index, ui_transaction) in transactions.iter().enumerate() {
-                match self.parse_transaction(ui_transaction, slot, tx_index).await {
+                match self.parse_transaction(ui_transaction, slot, block_time, tx_index).await {
                     Ok(Some(parsed_tx)) => {
                         // Filter for our target programs
                         if self.is_target_transaction(&parsed_tx) {
@@ -288,17 +288,23 @@ impl RealDataCollector {
         &self,
         ui_transaction: &solana_transaction_status::EncodedTransactionWithStatusMeta,
         slot: u64,
+        block_time: Option<i64>,
         _tx_index: usize,
     ) -> Result<Option<RealSolanaTransaction>> {
-        // Extract transaction signature
-        let signature = if let Some(sigs) = &ui_transaction.transaction.signatures {
-            if sigs.is_empty() {
-                return Ok(None);
-            }
-            sigs[0].clone()
-        } else {
-            return Ok(None);
+        // Extract transaction signature using pattern matching on EncodedTransaction enum
+        let signature = match &ui_transaction.transaction {
+            EncodedTransaction::Json(ui_tx) => ui_tx.signatures.first()
+                .cloned()
+                .unwrap_or_else(|| "unknown".to_string()),
+            EncodedTransaction::Accounts(ui_tx) => ui_tx.signatures.first()
+                .cloned()
+                .unwrap_or_else(|| "unknown".to_string()),
+            _ => return Ok(None),
         };
+
+        if signature == "unknown" {
+            return Ok(None);
+        }
 
         // Check if transaction succeeded
         let success = ui_transaction.meta.as_ref()
@@ -311,7 +317,6 @@ impl RealDataCollector {
         }
 
         // Extract basic transaction info
-        let block_time = ui_transaction.block_time;
         let fee = ui_transaction.meta.as_ref()
             .map(|meta| meta.fee)
             .unwrap_or(0);
@@ -320,15 +325,19 @@ impl RealDataCollector {
             .and_then(|meta| meta.err.as_ref())
             .map(|err| format!("{:?}", err));
 
-        // Extract accounts and balances
-        let accounts = if let Some(message) = &ui_transaction.transaction.message {
-            if let Some(account_keys) = &message.account_keys {
-                account_keys.iter().map(|key| key.to_string()).collect()
-            } else {
-                Vec::new()
+        // Extract accounts and balances using pattern matching on both EncodedTransaction and UiMessage
+        let accounts = match &ui_transaction.transaction {
+            EncodedTransaction::Json(ui_tx) => {
+                match &ui_tx.message {
+                    UiMessage::Parsed(parsed_msg) => {
+                        parsed_msg.account_keys.iter().map(|key| key.pubkey.clone()).collect()
+                    }
+                    UiMessage::Raw(raw_msg) => {
+                        raw_msg.account_keys.clone()
+                    }
+                }
             }
-        } else {
-            Vec::new()
+            _ => Vec::new(),
         };
 
         let (pre_balances, post_balances) = if let Some(meta) = &ui_transaction.meta {
@@ -337,21 +346,24 @@ impl RealDataCollector {
             (Vec::new(), Vec::new())
         };
 
-        // Extract log messages
+        // Extract log messages (handle OptionSerializer)
         let log_messages = ui_transaction.meta.as_ref()
-            .and_then(|meta| meta.log_messages.as_ref())
-            .map(|logs| logs.clone())
+            .and_then(|meta| Option::<Vec<String>>::from(meta.log_messages.clone()))
             .unwrap_or_default();
 
-        // Extract compute units
+        // Extract compute units (handle OptionSerializer)
         let compute_units_consumed = ui_transaction.meta.as_ref()
-            .and_then(|meta| meta.compute_units_consumed);
+            .and_then(|meta| Option::<u64>::from(meta.compute_units_consumed.clone()));
 
-        // Extract recent blockhash
-        let recent_blockhash = if let Some(message) = &ui_transaction.transaction.message {
-            message.recent_blockhash.clone()
-        } else {
-            String::new()
+        // Extract recent blockhash using pattern matching on both EncodedTransaction and UiMessage
+        let recent_blockhash = match &ui_transaction.transaction {
+            EncodedTransaction::Json(ui_tx) => {
+                match &ui_tx.message {
+                    UiMessage::Parsed(parsed_msg) => parsed_msg.recent_blockhash.clone(),
+                    UiMessage::Raw(raw_msg) => raw_msg.recent_blockhash.clone(),
+                }
+            }
+            _ => String::new(),
         };
 
         // Parse program interactions
@@ -386,53 +398,106 @@ impl RealDataCollector {
     ) -> Result<Vec<ProgramInteraction>> {
         let mut interactions = Vec::new();
 
-        if let Some(message) = &ui_transaction.transaction.message {
-            if let Some(instructions) = &message.instructions {
-                for (idx, instruction) in instructions.iter().enumerate() {
-                    if let Some(program_id_index) = instruction.program_id_index {
-                        if let Some(account_keys) = &message.account_keys {
-                            if let Some(program_id) = account_keys.get(program_id_index as usize) {
-                                let program_id_str = program_id.to_string();
+        // Pattern match on EncodedTransaction to access message
+        let ui_tx = match &ui_transaction.transaction {
+            EncodedTransaction::Json(ui_tx) => ui_tx,
+            _ => return Ok(interactions),
+        };
 
-                                // Check if this is one of our target programs
-                                if let Some(program_name) = self.target_programs.get(&program_id_str) {
-                                    let instruction_data = instruction.data
-                                        .as_ref()
-                                        .map(|data| {
-                                            // Decode base58 instruction data
-                                            bs58::decode(data).into_vec().unwrap_or_default()
-                                        })
-                                        .unwrap_or_default();
-
-                                    let account_indices = instruction.accounts.clone();
-
-                                    // Check for state compression indicators
-                                    let is_state_compression = self.detect_state_compression(
-                                        &program_id_str,
-                                        &instruction_data,
-                                        &ui_transaction.meta
-                                    );
-
-                                    let compression_data = if is_state_compression {
-                                        self.extract_compression_data(ui_transaction).await?
-                                    } else {
-                                        None
-                                    };
-
-                                    interactions.push(ProgramInteraction {
-                                        program_id: program_id_str,
-                                        program_name: program_name.clone(),
-                                        instruction_data,
-                                        instruction_index: idx as u8,
-                                        account_indices,
-                                        is_state_compression,
-                                        compression_data,
-                                    });
+        // Get account keys and instructions based on UiMessage variant
+        let (account_keys, instructions): (Vec<String>, Vec<_>) = match &ui_tx.message {
+            UiMessage::Parsed(parsed_msg) => {
+                let keys: Vec<String> = parsed_msg.account_keys.iter()
+                    .map(|key| key.pubkey.clone())
+                    .collect();
+                // For parsed messages, instructions can be Parsed or Compiled
+                let instrs: Vec<(String, Vec<u8>, Vec<String>)> = parsed_msg.instructions.iter()
+                    .filter_map(|instr| {
+                        match instr {
+                            UiInstruction::Parsed(ui_parsed) => {
+                                // UiParsedInstruction is also an enum
+                                match ui_parsed {
+                                    UiParsedInstruction::Parsed(parsed) => {
+                                        let program_id = parsed.program_id.clone();
+                                        // Parsed instructions don't have raw data easily accessible
+                                        let data = Vec::new();
+                                        let accounts = Vec::new();
+                                        Some((program_id, data, accounts))
+                                    }
+                                    UiParsedInstruction::PartiallyDecoded(partial) => {
+                                        let program_id = partial.program_id.clone();
+                                        let data = bs58::decode(&partial.data).into_vec().unwrap_or_default();
+                                        let accounts = partial.accounts.clone();
+                                        Some((program_id, data, accounts))
+                                    }
                                 }
                             }
+                            UiInstruction::Compiled(compiled) => {
+                                let program_idx = compiled.program_id_index as usize;
+                                keys.get(program_idx).map(|prog_id| {
+                                    let data = bs58::decode(&compiled.data).into_vec().unwrap_or_default();
+                                    let accounts: Vec<String> = compiled.accounts.iter()
+                                        .filter_map(|&idx| keys.get(idx as usize).cloned())
+                                        .collect();
+                                    (prog_id.clone(), data, accounts)
+                                })
+                            }
                         }
-                    }
-                }
+                    })
+                    .collect();
+                (keys, instrs)
+            }
+            UiMessage::Raw(raw_msg) => {
+                let keys = raw_msg.account_keys.clone();
+                // For raw messages, we need to decode instruction data
+                let instrs: Vec<(String, Vec<u8>, Vec<String>)> = raw_msg.instructions.iter()
+                    .filter_map(|instr| {
+                        let program_idx = instr.program_id_index as usize;
+                        keys.get(program_idx).map(|prog_id| {
+                            let data = bs58::decode(&instr.data).into_vec().unwrap_or_default();
+                            let accounts: Vec<String> = instr.accounts.iter()
+                                .filter_map(|&idx| keys.get(idx as usize).cloned())
+                                .collect();
+                            (prog_id.clone(), data, accounts)
+                        })
+                    })
+                    .collect();
+                (keys, instrs)
+            }
+        };
+
+        for (idx, (program_id_str, instruction_data, accounts)) in instructions.into_iter().enumerate() {
+            // Check if this is one of our target programs
+            if let Some(program_name) = self.target_programs.get(&program_id_str) {
+                // Get account indices from the instruction
+                let account_indices: Vec<u8> = accounts.iter()
+                    .filter_map(|acc| {
+                        account_keys.iter().position(|k| k == acc).map(|i| i as u8)
+                    })
+                    .collect();
+
+                // Check for state compression indicators
+                let is_state_compression = self.detect_state_compression(
+                    &program_id_str,
+                    &instruction_data,
+                    &ui_transaction.meta
+                );
+
+                let compression_data = if is_state_compression {
+                    self.extract_compression_data(ui_transaction).await?
+                } else {
+                    None
+                };
+
+                interactions.push(ProgramInteraction {
+                    program_id: program_id_str,
+                    program_name: program_name.clone(),
+                    instruction_data,
+                    instruction_index: idx as u8,
+                    account_indices,
+                    is_state_compression,
+                    compression_data,
+                });
             }
         }
 

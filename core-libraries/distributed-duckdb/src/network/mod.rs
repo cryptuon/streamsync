@@ -11,6 +11,7 @@ pub mod protocol;
 pub mod gossip;
 
 use anyhow::Result;
+use futures::future::join_all;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::net::SocketAddr;
@@ -160,7 +161,7 @@ impl P2PNetwork {
             .map(|peer| peer.send_message(message.clone()))
             .collect();
 
-        for result in futures::future::join_all(futures).await {
+        for result in join_all(futures).await {
             if let Err(e) = result {
                 tracing::warn!("Failed to send broadcast message: {}", e);
             }

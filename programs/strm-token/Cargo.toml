@@ -1,0 +1,20 @@
+[package]
+name = "strm-token"
+version = "0.1.0"
+description = "StreamSync STRM Token Program - Staking, Rewards, and Settlement"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "strm_token"
+
+[features]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+cpi = ["no-entrypoint"]
+default = []
+
+[dependencies]
+anchor-lang = "0.30"
+anchor-spl = "0.30"

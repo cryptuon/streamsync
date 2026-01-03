@@ -34,29 +34,11 @@
 //!
 //! ## Quick Start
 //!
-//! ```rust,no_run
-//! use distributed_duckdb::{DistributedCoordinator, NetworkConfig, ConsensusConfig};
-//! use uuid::Uuid;
+//! ```rust
+//! use distributed_duckdb::DistributedCoordinator;
 //!
-//! # async fn example() -> anyhow::Result<()> {
-//! let node_id = Uuid::new_v4();
-//! let participants = vec![node_id]; // Add other node IDs
-//!
-//! let network_config = NetworkConfig {
-//!     node_id,
-//!     listen_addr: "127.0.0.1:8080".parse()?,
-//!     bootstrap_peers: vec![],
-//!     ..Default::default()
-//! };
-//!
-//! let consensus_config = ConsensusConfig::new(node_id, participants);
-//!
-//! let coordinator = DistributedCoordinator::new(network_config, consensus_config).await?;
-//!
-//! // Execute distributed query with consensus
-//! // let result = coordinator.execute_query_with_consensus(sql).await?;
-//! # Ok(())
-//! # }
+//! // Create a distributed coordinator (placeholder implementation)
+//! let coordinator = DistributedCoordinator::new();
 //! ```
 //!
 //! ## Performance & Scale
@@ -75,7 +57,11 @@ pub mod query;
 pub mod shard;
 
 // Re-export main types
-pub use coordinator::DistributedCoordinator;
+pub use coordinator::{
+    DistributedCoordinator, CoordinatorConfig, CoordinatorStats,
+    QueryPlan, QueryStatus, QueryCost, PartialResult,
+    AggregationStrategy, AggregateFunction,
+};
 pub use query::{Query, QueryResult};
 pub use shard::ShardManager;
 pub use network::{P2PNetwork, NetworkConfig};

@@ -16,7 +16,7 @@ use solana_sdk::{
     slot_history::Slot,
 };
 use solana_transaction_status::{
-    UiTransactionEncoding, TransactionDetails
+    UiTransactionEncoding, TransactionDetails, EncodedTransaction,
 };
 use std::collections::{HashMap, HashSet};
 use std::time::{Duration, SystemTime};
@@ -254,10 +254,9 @@ impl SolanaDataCollector {
 
         if let Some(transactions) = block.transactions {
             for transaction in transactions {
-                if let Some(ui_transaction) = transaction.transaction {
-                    if let Some(message) = ui_transaction.message {
-                        self.process_transaction(slot, block.block_time, &transaction, &message).await?;
-                    }
+                // Extract message from the EncodedTransaction (only Json variant has full message)
+                if let EncodedTransaction::Json(ui_tx) = &transaction.transaction {
+                    self.process_transaction(slot, block.block_time, &transaction, &ui_tx.message).await?;
                 }
             }
         }
@@ -270,7 +269,7 @@ impl SolanaDataCollector {
         &mut self,
         slot: Slot,
         block_time: Option<i64>,
-        transaction: &solana_transaction_status::EncodedConfirmedTransactionWithStatusMeta,
+        transaction: &solana_transaction_status::EncodedTransactionWithStatusMeta,
         message: &solana_transaction_status::UiMessage,
     ) -> Result<()> {
 
@@ -284,9 +283,10 @@ impl SolanaDataCollector {
             }
         };
 
+        // Only process parsed messages which have UiInstruction
         let instructions = match message {
             solana_transaction_status::UiMessage::Parsed(parsed) => &parsed.instructions,
-            solana_transaction_status::UiMessage::Raw(raw) => &raw.instructions,
+            solana_transaction_status::UiMessage::Raw(_) => return Ok(()), // Skip raw messages
         };
 
         // Check if transaction involves our target programs
@@ -322,18 +322,23 @@ impl SolanaDataCollector {
         &self,
         slot: Slot,
         block_time: Option<i64>,
-        transaction: &solana_transaction_status::EncodedConfirmedTransactionWithStatusMeta,
+        transaction: &solana_transaction_status::EncodedTransactionWithStatusMeta,
         target_program: &TargetProgram,
         program_id: &str,
         instruction: &solana_transaction_status::UiInstruction,
         account_keys: &[String],
     ) -> Result<CollectedTransaction> {
 
-        let signature = transaction.transaction
-            .as_ref()
-            .and_then(|tx| tx.signatures.first())
-            .unwrap_or(&"unknown".to_string())
-            .clone();
+        // Extract signature from the EncodedTransaction
+        let signature = match &transaction.transaction {
+            EncodedTransaction::Json(ui_tx) => ui_tx.signatures.first()
+                .cloned()
+                .unwrap_or_else(|| "unknown".to_string()),
+            EncodedTransaction::Accounts(ui_tx) => ui_tx.signatures.first()
+                .cloned()
+                .unwrap_or_else(|| "unknown".to_string()),
+            _ => "unknown".to_string(),
+        };
 
         let success = transaction.meta
             .as_ref()
@@ -352,12 +357,12 @@ impl SolanaDataCollector {
 
         let log_messages = transaction.meta
             .as_ref()
-            .and_then(|meta| meta.log_messages.clone())
+            .and_then(|meta| Option::<Vec<String>>::from(meta.log_messages.clone()))
             .unwrap_or_default();
 
         let compute_units_consumed = transaction.meta
             .as_ref()
-            .and_then(|meta| meta.compute_units_consumed);
+            .and_then(|meta| Option::<u64>::from(meta.compute_units_consumed.clone()));
 
         // Extract instruction data
         let instruction_data = self.extract_instruction_data(instruction);
@@ -423,7 +428,7 @@ impl SolanaDataCollector {
 
         // Check for known compression instruction discriminators
         if instruction_data.len() >= 8 {
-            let discriminator = &instruction_data[0..8];
+            let _discriminator = &instruction_data[0..8];
             // Add known compression discriminators here
             // This would need to be populated with actual discriminators
         }
@@ -432,7 +437,7 @@ impl SolanaDataCollector {
     }
 
     /// Extract merkle tree address from transaction
-    fn extract_merkle_tree(&self, account_keys: &[String], log_messages: &[String]) -> Option<String> {
+    fn extract_merkle_tree(&self, _account_keys: &[String], log_messages: &[String]) -> Option<String> {
         // Look for merkle tree references in logs
         for log in log_messages {
             if log.contains("merkle tree") || log.contains("tree:") {
@@ -485,7 +490,7 @@ impl SolanaDataCollector {
     fn get_program_index(&self, instruction: &solana_transaction_status::UiInstruction) -> Option<usize> {
         match instruction {
             solana_transaction_status::UiInstruction::Compiled(compiled) => Some(compiled.program_id_index as usize),
-            solana_transaction_status::UiInstruction::Parsed(parsed) => {
+            solana_transaction_status::UiInstruction::Parsed(_parsed) => {
                 // For parsed instructions, try to extract program ID
                 None // Simplified for now
             }

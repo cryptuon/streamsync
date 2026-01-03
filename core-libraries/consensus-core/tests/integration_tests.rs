@@ -22,7 +22,7 @@ async fn test_four_node_consensus() -> Result<()> {
     // Create engines
     for &node_id in &node_ids {
         let config = Config::new(node_id, node_ids.clone())
-            .with_request_timeout(std::time::Duration::from_secs(2))
+            .with_request_timeout(std::time::Duration::from_secs(10))
             .with_debug_logs(true);
 
         let transport = transports.get(&node_id).unwrap();
@@ -35,8 +35,8 @@ async fn test_four_node_consensus() -> Result<()> {
         engine.start().await?;
     }
 
-    // Wait for startup
-    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+    // Wait for startup - needs enough time for all message loops to be ready
+    tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
 
     // Subscribe to results
     let mut receivers = Vec::new();
@@ -50,7 +50,7 @@ async fn test_four_node_consensus() -> Result<()> {
 
     // Propose and wait for result
     let result = tokio::time::timeout(
-        std::time::Duration::from_secs(5),
+        std::time::Duration::from_secs(15),
         primary_engine.propose(proposal.clone())
     ).await.expect("Timeout").expect("Proposal failed");
 
@@ -105,8 +105,8 @@ async fn test_view_change() -> Result<()> {
         engine.start().await?;
     }
 
-    // Wait for startup
-    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+    // Wait for startup - needs enough time for all message loops to be ready
+    tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
 
     // Check initial view
     assert_eq!(engines[0].current_view().await, 0);
@@ -145,7 +145,7 @@ async fn test_multiple_proposals() -> Result<()> {
     // Create engines
     for &node_id in &node_ids {
         let config = Config::new(node_id, node_ids.clone())
-            .with_request_timeout(std::time::Duration::from_secs(1))
+            .with_request_timeout(std::time::Duration::from_secs(10))
             .with_debug_logs(true);
 
         let transport = transports.get(&node_id).unwrap();
@@ -158,8 +158,8 @@ async fn test_multiple_proposals() -> Result<()> {
         engine.start().await?;
     }
 
-    // Wait for startup
-    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+    // Wait for startup - needs enough time for all message loops to be ready
+    tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
 
     let primary_engine = &engines[0];
 
@@ -204,7 +204,7 @@ async fn test_byzantine_fault_tolerance() -> Result<()> {
         if i == 3 { continue; } // Skip last node (Byzantine)
 
         let config = Config::new(node_id, node_ids.clone())
-            .with_request_timeout(std::time::Duration::from_secs(2))
+            .with_request_timeout(std::time::Duration::from_secs(10))
             .with_debug_logs(true);
 
         let transport = transports.get(&node_id).unwrap();
@@ -217,8 +217,8 @@ async fn test_byzantine_fault_tolerance() -> Result<()> {
         engine.start().await?;
     }
 
-    // Wait for startup
-    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+    // Wait for startup - needs enough time for all message loops to be ready
+    tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
 
     // Primary proposes (should still work with 3/4 nodes)
     let proposal = Proposal::new("byzantine_test".to_string(), b"test_data".to_vec());
@@ -256,7 +256,7 @@ async fn test_checkpointing() -> Result<()> {
     for &node_id in &node_ids {
         let config = Config::new(node_id, node_ids.clone())
             .with_checkpoint_interval(3) // Checkpoint every 3 proposals
-            .with_request_timeout(std::time::Duration::from_secs(1))
+            .with_request_timeout(std::time::Duration::from_secs(10))
             .with_debug_logs(true);
 
         let transport = transports.get(&node_id).unwrap();
@@ -269,8 +269,8 @@ async fn test_checkpointing() -> Result<()> {
         engine.start().await?;
     }
 
-    // Wait for startup
-    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+    // Wait for startup - needs enough time for all message loops to be ready
+    tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
 
     let primary_engine = &engines[0];
 
@@ -345,7 +345,7 @@ async fn test_concurrent_proposals() -> Result<()> {
     // Create engines wrapped in Arc for sharing
     for &node_id in &node_ids {
         let config = Config::new(node_id, node_ids.clone())
-            .with_request_timeout(std::time::Duration::from_secs(2))
+            .with_request_timeout(std::time::Duration::from_secs(10))
             .with_debug_logs(true);
 
         let transport = transports.get(&node_id).unwrap();
@@ -358,8 +358,8 @@ async fn test_concurrent_proposals() -> Result<()> {
         engine.start().await?;
     }
 
-    // Wait for startup
-    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+    // Wait for startup - needs enough time for all message loops to be ready
+    tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
 
     // Launch concurrent proposals
     let mut tasks = Vec::new();

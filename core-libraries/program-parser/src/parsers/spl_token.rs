@@ -6,7 +6,6 @@ use crate::{
 };
 use solana_sdk::pubkey::Pubkey;
 use spl_token::instruction::TokenInstruction;
-use std::str::FromStr;
 
 pub struct SplTokenParser;
 
@@ -307,7 +306,7 @@ impl SplTokenParser {
 
     async fn parse_set_authority(
         &self,
-        authority_type: spl_token::instruction::AuthorityType,
+        _authority_type: spl_token::instruction::AuthorityType,
         new_authority: Option<Pubkey>,
         account_keys: &[Pubkey],
     ) -> ParseResult<SplTokenData> {

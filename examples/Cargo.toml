@@ -44,7 +44,7 @@ path = "economics_demo.rs"
 zk-reconstruction = { path = "../core-libraries/zk-reconstruction" }
 idl-sync = { path = "../core-libraries/idl-sync" }
 streamsync-node = { path = "../src" }
-# distributed-duckdb = { path = "../core-libraries/distributed-duckdb" } # Temporarily disabled
+distributed-duckdb = { path = "../core-libraries/distributed-duckdb" }
 
 # Common dependencies
 tokio = { workspace = true }

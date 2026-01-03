@@ -1,12 +1,13 @@
 //! Consensus state management
 
-use crate::types::{NodeId, SequenceNumber, ViewNumber, Phase, Proposal, ConsensusStats};
+use crate::types::{NodeId, SequenceNumber, ViewNumber, Phase, Proposal, ConsensusStats, ConsensusResult};
 use crate::messages::{MessageType, PrepareData, CommitData, PrePrepareData};
 use crate::error::{ConsensusError, Result};
 use crate::config::Config;
 use std::collections::{HashMap, HashSet};
 use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
+use tokio::sync::oneshot;
 
 /// State of a single proposal in the consensus protocol
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -119,8 +120,12 @@ impl ProposalState {
     }
 }
 
+/// Completion notifier for proposal consensus
+pub struct ProposalNotifier {
+    pub tx: oneshot::Sender<ConsensusResult>,
+}
+
 /// Overall consensus state
-#[derive(Debug, Clone)]
 pub struct ConsensusState {
     /// Configuration
     config: Config,
@@ -157,6 +162,10 @@ pub struct ConsensusState {
 
     /// Commit times for average calculation
     recent_commit_times: Vec<u64>,
+
+    /// Completion notifiers for pending proposals (not serializable)
+    #[allow(dead_code)]
+    completion_notifiers: HashMap<SequenceNumber, ProposalNotifier>,
 }
 
 impl ConsensusState {
@@ -178,8 +187,32 @@ impl ConsensusState {
             start_time: now,
             message_counts: HashMap::new(),
             recent_commit_times: Vec::new(),
+            completion_notifiers: HashMap::new(),
             config,
         }
+    }
+
+    /// Register a completion notifier for a proposal
+    pub fn register_completion_notifier(&mut self, sequence: SequenceNumber, tx: oneshot::Sender<ConsensusResult>) {
+        self.completion_notifiers.insert(sequence, ProposalNotifier { tx });
+    }
+
+    /// Notify completion of a proposal (called when consensus is reached)
+    pub fn notify_completion(&mut self, sequence: SequenceNumber, result: ConsensusResult) {
+        if let Some(notifier) = self.completion_notifiers.remove(&sequence) {
+            // Ignore send errors - receiver might have dropped
+            let _ = notifier.tx.send(result);
+        }
+    }
+
+    /// Cancel a pending completion notifier (e.g., on timeout or view change)
+    pub fn cancel_notifier(&mut self, sequence: SequenceNumber) {
+        self.completion_notifiers.remove(&sequence);
+    }
+
+    /// Clear all completion notifiers (e.g., on view change)
+    pub fn clear_notifiers(&mut self) {
+        self.completion_notifiers.clear();
     }
 
     /// Get current configuration
@@ -286,8 +319,11 @@ impl ConsensusState {
         // Validate and update proposal state
         let quorum_size = self.config.quorum_size();
         let should_advance = {
-            let proposal = self.active_proposals.get_mut(&sequence)
-                .ok_or(ConsensusError::InvalidSequence { sequence, last_committed: self.last_committed })?;
+            // If we don't have the proposal yet (PrePrepare not received), ignore this Prepare
+            let proposal = match self.active_proposals.get_mut(&sequence) {
+                Some(p) => p,
+                None => return Ok(false), // Haven't received PrePrepare yet, ignore
+            };
 
             // Validate digest
             if prepare_data.digest != proposal.digest {
@@ -300,6 +336,9 @@ impl ConsensusState {
             // Add prepare vote
             let added = proposal.add_prepare(prepare_data.node);
             if added {
+                // Ensure we're in Prepare phase (transition from PrePrepare if needed)
+                proposal.advance_to_prepare();
+
                 // Check if we have quorum and can advance to commit phase
                 let has_quorum = proposal.has_prepare_quorum(quorum_size);
                 if has_quorum {
@@ -335,8 +374,11 @@ impl ConsensusState {
         // Validate and update proposal state
         let quorum_size = self.config.quorum_size();
         let (should_record, commit_time_opt, should_commit) = {
-            let proposal = self.active_proposals.get_mut(&sequence)
-                .ok_or(ConsensusError::InvalidSequence { sequence, last_committed: self.last_committed })?;
+            // If we don't have the proposal yet, ignore this Commit message
+            let proposal = match self.active_proposals.get_mut(&sequence) {
+                Some(p) => p,
+                None => return Ok(None), // Haven't received PrePrepare yet, ignore
+            };
 
             // Validate digest
             if commit_data.digest != proposal.digest {
@@ -450,6 +492,9 @@ impl ConsensusState {
 
         // Clear active proposals (they will need to be re-proposed)
         self.active_proposals.clear();
+
+        // Clear completion notifiers (proposals are no longer valid)
+        self.clear_notifiers();
 
         self.stats.current_view = new_view;
 
@@ -660,9 +705,10 @@ mod tests {
         assert!(state.view_change_in_progress);
 
         // Process view change votes
-        assert!(!state.process_view_change_vote(1, Uuid::new_v4()).unwrap()); // Not enough yet
-        assert!(!state.process_view_change_vote(1, Uuid::new_v4()).unwrap()); // Still not enough
-        assert!(state.process_view_change_vote(1, Uuid::new_v4()).unwrap()); // Now we have quorum
+        // With 4 nodes, quorum is 3 (2f+1 where f=1)
+        // start_view_change already added our own vote (1 vote)
+        assert!(!state.process_view_change_vote(1, Uuid::new_v4()).unwrap()); // 2 votes - not enough
+        assert!(state.process_view_change_vote(1, Uuid::new_v4()).unwrap()); // 3 votes - quorum reached
 
         // Complete view change
         assert!(state.complete_view_change(1).is_ok());

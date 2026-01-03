@@ -2,7 +2,6 @@
 
 use crate::types::ParseResult;
 use dashmap::DashMap;
-use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 /// High-performance cache for parsed results

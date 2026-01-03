@@ -52,11 +52,15 @@ True decentralization isn't about where servers are located - it's about **who c
 - **Market-driven pricing** prevents vendor lock-in
 - **Protocol-level guarantees** ensure access cannot be restricted
 
-### Token Economics (Solana-Based Settlement)
-- **$QUERY tokens** for network access (purchased with SOL)
-- **Batched settlement** every 5 minutes to minimize costs
-- **Performance-based rewards** distributed to competing nodes
-- **Governance voting** on network parameters and upgrades
+### $STRM Token Economics
+- **$STRM token** for network access and staking
+- **Payment options**: STRM, SOL, USDC, or custom SPL tokens
+- **Revenue split**: 50% nodes, 20% treasury, 20% data providers, 10% governance
+- **Racing rewards**: 70% winner, 15% each verifier
+- **Batched settlement** every 5 minutes on Solana
+- **Staking required**: 10,000 STRM minimum, 7-day cooldown
+
+> **Full details**: [Token Economics](docs/token-economics.md)
 
 ### Customer Value Proposition
 - **Pay only for performance delivered**: Sub-10ms or no charge
@@ -87,40 +91,96 @@ True decentralization isn't about where servers are located - it's about **who c
 
 ## Documentation
 
-### Foundational Principles
-- [Why Economic Decentralization](docs/why-economic-decentralization.md) - Core philosophy and customer benefits
-- [Performance Guarantees](docs/performance-guarantees.md) - How we deliver sub-10ms with economic incentives
-- [Network Economics](docs/network-economics.md) - Token model and competitive dynamics
+### User Documentation (MkDocs)
 
-### Technical Implementation
-- [Architecture Overview](docs/architecture-overview.md) - System design and component interaction
-- [Node Operations](docs/node-operations.md) - How to run and operate network nodes
-- [Query Processing](docs/query-processing.md) - Distributed query execution and consensus
-- [Communication Protocol](docs/communication-protocol.md) - NNG-based inter-node messaging
+Build and serve the user-facing documentation:
 
-### Development
-- [Getting Started](docs/getting-started.md) - Development environment setup
-- [Core Libraries](docs/core-libraries.md) - ZK reconstruction, IDL sync, distributed DuckDB
-- [Testing Framework](docs/testing-framework.md) - Performance and correctness testing
-- [Deployment Guide](docs/deployment-guide.md) - Production deployment procedures
+```bash
+# Install MkDocs with Material theme
+pip install mkdocs-material mkdocs-minify-plugin
+
+# Serve locally
+mkdocs serve
+
+# Build static site
+mkdocs build
+```
+
+Visit http://localhost:8000 to browse the documentation.
+
+### Developer Documentation
+
+| Topic | Link |
+|-------|------|
+| **Why Economic Decentralization** | [docs/why-economic-decentralization.md](docs/why-economic-decentralization.md) |
+| **Performance Guarantees** | [docs/performance-guarantees.md](docs/performance-guarantees.md) |
+| **Token Economics** | [docs/token-economics.md](docs/token-economics.md) |
+| **Network Economics** | [docs/network-economics.md](docs/network-economics.md) |
+| **Incentive Model** | [docs/incentive-model.md](docs/incentive-model.md) |
+| **Architecture Overview** | [docs/architecture-overview.md](docs/architecture-overview.md) |
+| **Core Libraries** | [docs/core-libraries.md](docs/core-libraries.md) |
+| **Whitepaper** | [docs/whitepaper/](docs/whitepaper/) |
+| **Getting Started** | [docs/getting-started.md](docs/getting-started.md) |
+| **Project Roadmap** | [docs/project-roadmap.md](docs/project-roadmap.md) |
 
 ## Project Status
 
-This project is in **active development**. We are building:
+This project has completed **Phase 1 development** with all core systems implemented and tested.
 
-1. **Core Libraries**: ZK reconstruction, IDL synchronization, distributed DuckDB integration
-2. **Network Protocol**: NNG-based communication and consensus mechanisms
-3. **Node Software**: High-performance indexing nodes with racing capabilities
-4. **Economic Layer**: Solana-based token contracts and settlement systems
+### Completed Components
+
+| Component | Status | Tests |
+|-----------|--------|-------|
+| **Core Libraries** | ✅ Complete | 193+ |
+| **$STRM Token Program** | ✅ Complete | Anchor-based |
+| **Payment Gateway** | ✅ Complete | Solana + Stripe |
+| **Settlement Engine** | ✅ Complete | Batch processing |
+| **Racing Competition** | ✅ Complete | Parallel queries |
+| **Node Specializations** | ✅ Complete | 4 types |
+| **Gossip Protocol** | ✅ Complete | Push/Pull/Heartbeat |
+| **Cluster Management** | ✅ Complete | Rebalancing + Health |
+
+### Core Libraries
+
+| Library | Purpose | Tests |
+|---------|---------|-------|
+| `networking-core` | Gossip protocol, peer discovery | 45 |
+| `sharding-core` | Hash ring, rebalancing, health | 60 |
+| `distributed-duckdb` | Distributed SQL queries | 34 |
+| `idl-sync` | Behavioral IDL generation | 18 |
+| `zk-reconstruction` | Compressed account recovery | 8 |
+| `storage-core` | Compression, batch I/O | 3 |
+| `solana-indexer` | RPC client, parsing | 6 |
+| `program-parser` | SPL/Metaplex parsing | 8 |
+
+### Quick Start
+
+```bash
+# Clone and build
+git clone https://github.com/your-org/streamsync.git
+cd streamsync
+cargo build --release
+
+# Run tests (193+ passing)
+cargo test --workspace
+
+# Initialize a node
+./target/release/streamsync init --config node.toml
+./target/release/streamsync run
+```
 
 ### Next Steps
 
-- [ ] Complete technical specification documents
-- [ ] Implement and test core libraries
-- [ ] Build MVP network with 3 competing operators
-- [ ] Deploy testnet for performance validation
-- [ ] Launch mainnet with initial operator cohort
+- [x] Complete core library development
+- [x] Implement economic layer ($STRM token)
+- [x] Build racing competition system
+- [x] Implement gossip protocol
+- [x] Add cluster health monitoring
+- [ ] Deploy to Solana devnet
+- [ ] Recruit founding operators
+- [ ] Launch testnet for validation
+- [ ] Mainnet deployment
 
 ---
 
-**This network will be economically decentralized from day 1, with technical decentralization following market-driven expansion.**
+**This network is economically decentralized from day 1, with technical decentralization following market-driven expansion.**

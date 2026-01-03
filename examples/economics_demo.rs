@@ -1,7 +1,6 @@
 //! StreamSync Economics System Demo
 
 use std::collections::HashMap;
-use tokio::time::{sleep, Duration};
 use uuid::Uuid;
 
 use streamsync_node::economics::{EconomicsManager, PaymentToken};
@@ -78,7 +77,7 @@ async fn main() -> anyhow::Result<()> {
         storage_weight: 0.05,
     };
 
-    let (mut revenue_manager, _revenue_receiver) = RevenueSharingManager::new(
+    let (revenue_manager, _revenue_receiver) = RevenueSharingManager::new(
         revenue_model,
         economics_receiver,
     );

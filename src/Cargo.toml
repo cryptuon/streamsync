@@ -5,6 +5,10 @@ edition = "2021"
 description = "StreamSync distributed Solana transaction indexing node"
 license = "MIT OR Apache-2.0"
 
+[lib]
+name = "streamsync_node"
+path = "lib.rs"
+
 [[bin]]
 name = "streamsync"
 path = "main.rs"
@@ -43,6 +47,10 @@ chrono = { workspace = true }
 # Solana integration
 solana-sdk = { workspace = true }
 solana-client = { workspace = true }
+solana-transaction-status = { workspace = true }
+
+# Performance
+dashmap = { workspace = true }
 
 [dev-dependencies]
 tokio-test = "0.4"

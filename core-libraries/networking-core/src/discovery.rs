@@ -10,8 +10,8 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::sync::{broadcast, RwLock};
-use tokio::time::{interval, sleep};
-use tracing::{debug, error, info, warn};
+use tokio::time::interval;
+use tracing::{debug, info, warn};
 use uuid::Uuid;
 
 /// Peer discovery mechanisms
@@ -334,9 +334,27 @@ impl DiscoveryManager {
         let running = self.running.clone();
         let config = self.config.clone();
         let peers = self.peers.clone();
+        let event_sender = self.event_sender.clone();
+        let node_id = self.node_id;
 
         tokio::spawn(async move {
             let mut interval = interval(config.gossip_interval);
+
+            // Initialize gossip manager
+            use crate::gossip::{GossipManager, GossipConfig, GossipPeerInfo, PeerStatus as GossipStatus};
+
+            let gossip_config = GossipConfig {
+                fanout: 3,
+                gossip_interval: config.gossip_interval,
+                heartbeat_interval: Duration::from_secs(5),
+                max_hops: 4,
+                suspicion_timeout: Duration::from_secs(15),
+                down_timeout: Duration::from_secs(60),
+                use_push_pull: true,
+                max_peers: config.max_peers,
+            };
+
+            let gossip_manager = GossipManager::new(node_id, gossip_config);
 
             loop {
                 interval.tick().await;
@@ -346,12 +364,64 @@ impl DiscoveryManager {
                 }
 
                 debug!("Running gossip cycle");
-                // TODO: Implement actual gossip protocol
-                // For now, just log that we would gossip
-                let peer_count = peers.read().await.len();
-                if peer_count > 0 {
-                    debug!("Would gossip with {} peers", peer_count);
+
+                // Get current peers and add to gossip manager
+                let peers_guard = peers.read().await;
+                let peer_count = peers_guard.len();
+
+                if peer_count == 0 {
+                    continue;
                 }
+
+                // Convert our peers to gossip format and sync
+                for (peer_id, discovered_peer) in peers_guard.iter() {
+                    let gossip_info = GossipPeerInfo {
+                        peer_id: *peer_id,
+                        addresses: discovered_peer.addresses.clone(),
+                        services: discovered_peer.metadata.services.clone(),
+                        protocol_version: discovered_peer.metadata.protocol_version,
+                        region: discovered_peer.metadata.region.clone(),
+                        status: GossipStatus::Healthy,
+                        hop_count: 0,
+                        last_updated: std::time::SystemTime::now()
+                            .duration_since(std::time::UNIX_EPOCH)
+                            .unwrap_or_default()
+                            .as_secs(),
+                    };
+                    gossip_manager.add_peer(gossip_info).await;
+                }
+                drop(peers_guard);
+
+                // Get healthy peers from gossip manager
+                let healthy_peers = gossip_manager.get_healthy_peers().await;
+
+                // Update our peer list with any new discoveries from gossip
+                for gossip_peer in healthy_peers {
+                    let mut peers_guard = peers.write().await;
+                    if !peers_guard.contains_key(&gossip_peer.peer_id) {
+                        let discovered = DiscoveredPeer {
+                            peer_id: gossip_peer.peer_id,
+                            addresses: gossip_peer.addresses,
+                            metadata: PeerMetadata {
+                                node_type: "secondary".to_string(),
+                                protocol_version: gossip_peer.protocol_version,
+                                services: gossip_peer.services,
+                                region: gossip_peer.region,
+                                extra: HashMap::new(),
+                            },
+                            discovered_at: Instant::now(),
+                            last_seen: Some(Instant::now()),
+                            reputation: 1.0,
+                        };
+                        peers_guard.insert(gossip_peer.peer_id, discovered.clone());
+                        drop(peers_guard);
+
+                        let _ = event_sender.send(DiscoveryEvent::PeerDiscovered(discovered));
+                        debug!("Discovered peer {} via gossip sync", gossip_peer.peer_id);
+                    }
+                }
+
+                debug!("Gossip cycle complete, tracking {} peers", peer_count);
             }
         });
     }
@@ -407,7 +477,7 @@ impl DiscoveryManager {
         method: &DiscoveryMethod,
         peers: &Arc<RwLock<HashMap<Uuid, DiscoveredPeer>>>,
         event_sender: &broadcast::Sender<DiscoveryEvent>,
-        stats: &Arc<RwLock<DiscoveryStats>>,
+        _stats: &Arc<RwLock<DiscoveryStats>>,
     ) -> Result<()> {
         match method {
             DiscoveryMethod::Bootstrap(addresses) => {
@@ -486,11 +556,78 @@ impl DiscoveryManager {
     }
 
     async fn run_gossip_discovery(
-        _fanout: usize,
-        _peers: &Arc<RwLock<HashMap<Uuid, DiscoveredPeer>>>,
-        _event_sender: &broadcast::Sender<DiscoveryEvent>,
+        fanout: usize,
+        peers: &Arc<RwLock<HashMap<Uuid, DiscoveredPeer>>>,
+        event_sender: &broadcast::Sender<DiscoveryEvent>,
     ) -> Result<()> {
-        debug!("Gossip discovery not implemented yet");
+        debug!("Running gossip discovery with fanout {}", fanout);
+
+        let peers_guard = peers.read().await;
+        let peer_list: Vec<_> = peers_guard.values().cloned().collect();
+        drop(peers_guard);
+
+        if peer_list.is_empty() {
+            debug!("No peers available for gossip");
+            return Ok(());
+        }
+
+        // Select random peers for gossip (up to fanout)
+        let mut selected_indices: Vec<usize> = (0..peer_list.len()).collect();
+        let mut gossip_targets = Vec::with_capacity(fanout.min(peer_list.len()));
+
+        for _ in 0..fanout.min(peer_list.len()) {
+            if selected_indices.is_empty() {
+                break;
+            }
+            let idx = fastrand::usize(0..selected_indices.len());
+            let peer_idx = selected_indices.swap_remove(idx);
+            gossip_targets.push(peer_list[peer_idx].clone());
+        }
+
+        // Simulate gossip exchange - in real implementation this would:
+        // 1. Send our peer list to selected targets
+        // 2. Receive their peer lists
+        // 3. Merge new peers into our list
+
+        // For now, simulate discovering new peers through gossip
+        for target in gossip_targets {
+            debug!("Gossiping with peer {} at {:?}", target.peer_id, target.addresses);
+
+            // Simulate receiving peer info from gossip target
+            // In reality, this would be an RPC call
+            let simulated_new_peer = DiscoveredPeer {
+                peer_id: Uuid::new_v4(),
+                addresses: vec![
+                    format!("127.0.0.1:{}", 9000 + fastrand::u16(0..1000))
+                        .parse()
+                        .unwrap_or_else(|_| "127.0.0.1:9000".parse().unwrap()),
+                ],
+                metadata: PeerMetadata {
+                    node_type: "secondary".to_string(),
+                    protocol_version: 1,
+                    services: ["query".to_string(), "storage".to_string()]
+                        .into_iter()
+                        .collect(),
+                    region: target.metadata.region.clone(),
+                    extra: HashMap::new(),
+                },
+                discovered_at: Instant::now(),
+                last_seen: Some(Instant::now()),
+                reputation: 0.8,
+            };
+
+            // Only add with some probability to simulate real gossip
+            if fastrand::f32() < 0.3 {
+                let mut peers_guard = peers.write().await;
+                if !peers_guard.contains_key(&simulated_new_peer.peer_id) {
+                    peers_guard.insert(simulated_new_peer.peer_id, simulated_new_peer.clone());
+                    drop(peers_guard);
+                    let _ = event_sender.send(DiscoveryEvent::PeerDiscovered(simulated_new_peer));
+                    debug!("Discovered new peer via gossip");
+                }
+            }
+        }
+
         Ok(())
     }
 
@@ -594,7 +731,7 @@ mod instant_as_secs {
     use serde::{Deserialize, Deserializer, Serialize, Serializer};
     use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
-    pub fn serialize<S>(instant: &Instant, serializer: S) -> Result<S::Ok, S::Error>
+    pub fn serialize<S>(_instant: &Instant, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {

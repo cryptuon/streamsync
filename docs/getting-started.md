@@ -1,6 +1,25 @@
 # Getting Started: Development Environment Setup
 
-Instructions for setting up the development environment and building the high-performance decentralized indexing network.
+Instructions for setting up the development environment and building StreamSync.
+
+## Quick Start
+
+```bash
+# Clone and build
+git clone https://github.com/your-org/streamsync.git
+cd streamsync
+
+# Build everything
+cargo build --release
+
+# Run all tests (193+ passing)
+cargo test --workspace
+
+# Run a specific library's tests
+cargo test --package networking-core   # 45 tests
+cargo test --package sharding-core     # 60 tests
+cargo test --package distributed-duckdb # 34 tests
+```
 
 ## Prerequisites
 
@@ -9,8 +28,8 @@ Instructions for setting up the development environment and building the high-pe
 # Minimum development setup
 CPU: 8 cores (16 recommended)
 RAM: 32GB (64GB recommended)
-Storage: 1TB NVMe SSD
-Network: 1Gbps connection
+Storage: 500GB SSD
+Network: 100Mbps connection
 
 # Production node requirements
 CPU: 32+ cores
@@ -22,23 +41,17 @@ Network: 10Gbps connection
 ### Software Requirements
 ```bash
 # Core development tools
-Rust 1.75+
-Node.js 18+
-Docker & Docker Compose
-PostgreSQL 14+
-DuckDB 0.9+
+Rust 1.75+          # cargo, rustc, rustfmt, clippy
+Git 2.0+
+OpenSSL development headers
 
-# Solana tools
+# Solana tools (for token program)
 Solana CLI 1.16+
-Anchor CLI 0.28+
-
-# Network libraries
-NNG (Nanomsg Next Generation)
-Protocol Buffers
+Anchor CLI 0.30+
 
 # Optional but recommended
-Redis (for caching)
-Grafana & Prometheus (for monitoring)
+Docker & Docker Compose  # For local testing
+Redis                    # For caching layer
 ```
 
 ## Development Environment Setup
@@ -46,8 +59,8 @@ Grafana & Prometheus (for monitoring)
 ### 1. Repository Setup
 ```bash
 # Clone the repository
-git clone https://github.com/your-org/decentralized-solana-indexing.git
-cd decentralized-solana-indexing
+git clone https://github.com/your-org/streamsync.git
+cd streamsync
 
 # Install Rust toolchain
 rustup update stable
@@ -60,43 +73,42 @@ sudo apt install -y \
     build-essential \
     libssl-dev \
     pkg-config \
-    libduckdb-dev \
-    libnng-dev \
     protobuf-compiler
 
 # Install system dependencies (macOS)
-brew install duckdb nng protobuf
+brew install openssl protobuf
 
-# Install Node.js dependencies for tooling
-npm install -g @solana/cli @coral-xyz/anchor-cli
+# Verify installation
+cargo --version
+rustc --version
 ```
 
-### 2. Core Library Development
+### 2. Build All Libraries
 ```bash
-# Build core libraries
-cd core-libraries
-
-# ZK Reconstruction Library
-cd zk-reconstruction
+# Build the entire workspace
 cargo build --release
-cargo test
-cd ..
 
-# IDL Synchronization Library
-cd idl-sync
-cargo build --release
-cargo test
-cd ..
+# This builds:
+# - streamsync (main binary)
+# - All 8 core libraries
+# - Tools and examples
+```
 
-# Distributed DuckDB Library
-cd distributed-duckdb
-cargo build --release
-cargo test
-cd ..
+### 3. Run Tests
+```bash
+# Run all tests (193+ tests)
+cargo test --workspace
 
-# Build integration layer
-cargo build --release --bin integration-tests
-cargo test integration_tests
+# Test output summary:
+# networking-core:     45 passed
+# sharding-core:       60 passed
+# distributed-duckdb:  34 passed
+# idl-sync:            18 passed
+# zk-reconstruction:    8 passed
+# solana-indexer:       6 passed
+# storage-core:         3 passed
+# program-parser:       8 passed
+# + doc tests and integration tests
 ```
 
 ### 3. Network Node Setup

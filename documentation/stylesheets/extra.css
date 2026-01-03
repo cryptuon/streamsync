@@ -1,0 +1,114 @@
+/* StreamSync Documentation Custom Styles */
+
+:root {
+  --md-primary-fg-color: #7c3aed;
+  --md-primary-fg-color--light: #8b5cf6;
+  --md-primary-fg-color--dark: #6d28d9;
+  --md-accent-fg-color: #f59e0b;
+}
+
+/* Hero section styling */
+.md-typeset h1 {
+  font-weight: 700;
+}
+
+/* Card grid styling */
+.grid.cards > ul {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1rem;
+}
+
+.grid.cards > ul > li {
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.grid.cards > ul > li:hover {
+  border-color: var(--md-primary-fg-color);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+/* Code block improvements */
+.md-typeset pre > code {
+  font-size: 0.85em;
+}
+
+/* Table styling */
+.md-typeset table:not([class]) {
+  font-size: 0.9em;
+}
+
+.md-typeset table:not([class]) th {
+  background-color: var(--md-primary-fg-color--light);
+  color: white;
+}
+
+/* Mermaid diagram styling */
+.mermaid {
+  text-align: center;
+  margin: 1.5rem 0;
+}
+
+/* Button styling */
+.md-button {
+  font-weight: 600;
+}
+
+.md-button--primary {
+  background-color: var(--md-primary-fg-color);
+  border-color: var(--md-primary-fg-color);
+}
+
+.md-button--primary:hover {
+  background-color: var(--md-primary-fg-color--dark);
+  border-color: var(--md-primary-fg-color--dark);
+}
+
+/* Admonition icons */
+.md-typeset .admonition.tip,
+.md-typeset details.tip {
+  border-color: var(--md-accent-fg-color);
+}
+
+/* FAQ styling */
+.md-typeset details.question {
+  margin-bottom: 0.5rem;
+}
+
+.md-typeset details.question summary {
+  font-weight: 600;
+}
+
+/* Footer adjustments */
+.md-footer-meta {
+  background-color: var(--md-primary-fg-color--dark);
+}
+
+/* Mobile responsive improvements */
+@media screen and (max-width: 76.1875em) {
+  .grid.cards > ul {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Syntax highlighting tweaks for Rust */
+.highlight .k,
+.highlight .kd,
+.highlight .kn {
+  color: #7c3aed;
+}
+
+.highlight .s,
+.highlight .s1,
+.highlight .s2 {
+  color: #059669;
+}
+
+/* Logo styling */
+.md-header__button.md-logo img,
+.md-header__button.md-logo svg {
+  height: 1.5rem;
+}

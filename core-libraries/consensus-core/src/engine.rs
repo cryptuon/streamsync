@@ -6,7 +6,7 @@ use crate::{
     messages::{ConsensusMessage, MessageBuilder, MessageType, PrePrepareData, PrepareData, CommitData, ViewChangeData},
     state::ConsensusState,
     transport::{Transport, Message},
-    types::{Proposal, ConsensusResult, ConsensusStats, Phase},
+    types::{Proposal, ConsensusResult, ConsensusStats},
 };
 use std::sync::Arc;
 use tokio::sync::{RwLock, mpsc, broadcast, Mutex};
@@ -18,13 +18,14 @@ pub struct ConsensusEngine<T: Transport> {
     /// Configuration
     config: Config,
 
-    /// Transport layer
-    transport: Arc<Mutex<T>>,
+    /// Transport layer (RwLock allows concurrent read access for receive operations)
+    transport: Arc<RwLock<T>>,
 
     /// Consensus state
     state: Arc<RwLock<ConsensusState>>,
 
-    /// Message builder
+    /// Message builder (used internally)
+    #[allow(dead_code)]
     message_builder: MessageBuilder,
 
     /// Channel for receiving results
@@ -38,6 +39,7 @@ pub struct ConsensusEngine<T: Transport> {
     running: Arc<RwLock<bool>>,
 
     /// Start time for statistics
+    #[allow(dead_code)]
     start_time: Instant,
 }
 
@@ -63,7 +65,7 @@ impl<T: Transport + 'static> ConsensusEngine<T> {
 
         Ok(Self {
             config,
-            transport: Arc::new(Mutex::new(transport)),
+            transport: Arc::new(RwLock::new(transport)),
             state,
             message_builder,
             result_tx,
@@ -84,7 +86,7 @@ impl<T: Transport + 'static> ConsensusEngine<T> {
         info!("🏛️ Starting consensus engine for node {}", self.config.node_id);
 
         // Start transport
-        self.transport.lock().await.start().await?;
+        self.transport.write().await.start().await?;
 
         *running = true;
 
@@ -110,7 +112,7 @@ impl<T: Transport + 'static> ConsensusEngine<T> {
         let _ = self.command_tx.send(EngineCommand::Stop);
 
         // Stop transport
-        self.transport.lock().await.stop().await?;
+        self.transport.write().await.stop().await?;
 
         *running = false;
 
@@ -218,7 +220,7 @@ impl<T: Transport + 'static> ConsensusEngine<T> {
         tokio::spawn(async move {
             while *running.read().await {
                 // Receive message from transport
-                let message = match transport.lock().await.receive().await {
+                let message = match transport.read().await.receive().await {
                     Ok(msg) => msg,
                     Err(ConsensusError::Timeout { .. }) => continue, // Normal timeout
                     Err(e) => {
@@ -247,7 +249,7 @@ impl<T: Transport + 'static> ConsensusEngine<T> {
         let command_rx = self.command_rx.clone();
         let state = self.state.clone();
         let transport = self.transport.clone();
-        let running = self.running.clone();
+        let _running = self.running.clone();
         let config = self.config.clone();
         let message_builder = MessageBuilder::new(self.config.node_id);
 
@@ -289,7 +291,7 @@ impl<T: Transport + 'static> ConsensusEngine<T> {
     async fn start_maintenance_loop(&self) {
         let state = self.state.clone();
         let running = self.running.clone();
-        let config = self.config.clone();
+        let _config = self.config.clone();
 
         tokio::spawn(async move {
             while *running.read().await {
@@ -314,7 +316,7 @@ impl<T: Transport + 'static> ConsensusEngine<T> {
 
     async fn handle_message(
         state: &Arc<RwLock<ConsensusState>>,
-        transport: &Arc<Mutex<T>>,
+        transport: &Arc<RwLock<T>>,
         result_tx: &broadcast::Sender<ConsensusResult>,
         config: &Config,
         message_builder: &MessageBuilder,
@@ -364,7 +366,7 @@ impl<T: Transport + 'static> ConsensusEngine<T> {
 
     async fn handle_propose(
         state: &Arc<RwLock<ConsensusState>>,
-        transport: &Arc<Mutex<T>>,
+        transport: &Arc<RwLock<T>>,
         config: &Config,
         message_builder: &MessageBuilder,
         proposal: Proposal,
@@ -375,53 +377,52 @@ impl<T: Transport + 'static> ConsensusEngine<T> {
         let sequence = state_guard.start_proposal(proposal.clone())?;
         let view = state_guard.current_view;
 
-        // Create and send pre-prepare message
-        let pre_prepare = message_builder.pre_prepare(view, sequence, proposal.clone());
+        // Create completion notifier channel
+        let (completion_tx, completion_rx) = tokio::sync::oneshot::channel();
+        state_guard.register_completion_notifier(sequence, completion_tx);
+
+        // Add proposal to local state BEFORE broadcasting (prevents race condition)
+        let pre_prepare_data = PrePrepareData::new(proposal.clone(), config.node_id);
+        state_guard.add_proposal(view, sequence, &pre_prepare_data)?;
+
+        // Add primary's own prepare vote (primary implicitly prepares its own proposal)
+        let prepare_data = PrepareData::new(pre_prepare_data.digest.clone(), config.node_id);
+        state_guard.process_prepare(view, sequence, &prepare_data)?;
         drop(state_guard);
 
+        // Now broadcast pre-prepare message to other nodes
+        let pre_prepare = message_builder.pre_prepare(view, sequence, proposal.clone());
         let message = Message::broadcast(config.node_id, pre_prepare);
-        transport.lock().await.send(message).await?;
+        transport.read().await.send(message).await?;
 
-        // Process our own pre-prepare
-        let pre_prepare_data = PrePrepareData::new(proposal.clone(), config.node_id);
-        state.write().await.add_proposal(view, sequence, &pre_prepare_data)?;
+        // Also broadcast our Prepare so backups can count it
+        // (needed for Byzantine fault tolerance when some nodes are offline)
+        let prepare = message_builder.prepare(view, sequence, pre_prepare_data.digest.clone());
+        let prepare_message = Message::broadcast(config.node_id, prepare);
+        transport.read().await.send(prepare_message).await?;
 
-        // Wait for consensus (simplified - in practice would use proper waiting mechanism)
+        // Wait for consensus via notification channel (event-driven, not polling)
         let timeout_duration = config.request_timeout;
-        let start = Instant::now();
 
-        while start.elapsed() < timeout_duration {
-            tokio::time::sleep(Duration::from_millis(10)).await;
-
-            let state_guard = state.read().await;
-            if let Some(proposal_state) = state_guard.get_proposal(sequence) {
-                if proposal_state.phase == Phase::Committed {
-                    let result = ConsensusResult::new(
-                        proposal,
-                        sequence,
-                        view,
-                        config.participants.clone(),
-                    );
-                    return Ok(result);
-                }
-            } else {
-                // Proposal was committed and removed
-                let result = ConsensusResult::new(
-                    proposal,
-                    sequence,
-                    view,
-                    config.participants.clone(),
-                );
-                return Ok(result);
+        match timeout(timeout_duration, completion_rx).await {
+            Ok(Ok(result)) => Ok(result),
+            Ok(Err(_)) => {
+                // Channel was closed without sending - likely view change or cleanup
+                Err(ConsensusError::Internal {
+                    message: "Proposal completion cancelled".to_string(),
+                })
+            }
+            Err(_) => {
+                // Timeout - clean up the notifier
+                state.write().await.cancel_notifier(sequence);
+                Err(ConsensusError::Timeout { timeout_ms: timeout_duration.as_millis() as u64 })
             }
         }
-
-        Err(ConsensusError::Timeout { timeout_ms: timeout_duration.as_millis() as u64 })
     }
 
     async fn handle_pre_prepare(
         state: &Arc<RwLock<ConsensusState>>,
-        transport: &Arc<Mutex<T>>,
+        transport: &Arc<RwLock<T>>,
         config: &Config,
         message_builder: &MessageBuilder,
         message: ConsensusMessage,
@@ -446,19 +447,25 @@ impl<T: Transport + 'static> ConsensusEngine<T> {
         }
 
         // Add to state
-        state.write().await.add_proposal(message.view, message.sequence, &pre_prepare_data)?;
+        let mut state_guard = state.write().await;
+        state_guard.add_proposal(message.view, message.sequence, &pre_prepare_data)?;
 
-        // Send prepare message
+        // Add our own prepare vote before sending (so we count towards quorum)
+        let prepare_data = PrepareData::new(pre_prepare_data.digest.clone(), config.node_id);
+        state_guard.process_prepare(message.view, message.sequence, &prepare_data)?;
+        drop(state_guard);
+
+        // Send prepare message to other nodes
         let prepare = message_builder.prepare(message.view, message.sequence, pre_prepare_data.digest);
         let prepare_message = Message::broadcast(config.node_id, prepare);
-        transport.lock().await.send(prepare_message).await?;
+        transport.read().await.send(prepare_message).await?;
 
         Ok(())
     }
 
     async fn handle_prepare(
         state: &Arc<RwLock<ConsensusState>>,
-        transport: &Arc<Mutex<T>>,
+        transport: &Arc<RwLock<T>>,
         config: &Config,
         message_builder: &MessageBuilder,
         message: ConsensusMessage,
@@ -477,9 +484,13 @@ impl<T: Transport + 'static> ConsensusEngine<T> {
 
         // Send commit if we have enough prepares
         if should_commit {
+            // Add our own commit vote before sending
+            let commit_data = CommitData::new(prepare_data.digest.clone(), config.node_id);
+            state.write().await.process_commit(message.view, message.sequence, &commit_data)?;
+
             let commit = message_builder.commit(message.view, message.sequence, prepare_data.digest);
             let commit_message = Message::broadcast(config.node_id, commit);
-            transport.lock().await.send(commit_message).await?;
+            transport.read().await.send(commit_message).await?;
         }
 
         Ok(())
@@ -487,7 +498,7 @@ impl<T: Transport + 'static> ConsensusEngine<T> {
 
     async fn handle_commit(
         state: &Arc<RwLock<ConsensusState>>,
-        _transport: &Arc<Mutex<T>>,
+        _transport: &Arc<RwLock<T>>,
         config: &Config,
         _message_builder: &MessageBuilder,
         result_tx: &broadcast::Sender<ConsensusResult>,
@@ -499,7 +510,8 @@ impl<T: Transport + 'static> ConsensusEngine<T> {
             })?;
 
         // Process commit
-        if let Some(committed_proposal) = state.write().await.process_commit(
+        let mut state_guard = state.write().await;
+        if let Some(committed_proposal) = state_guard.process_commit(
             message.view,
             message.sequence,
             &commit_data,
@@ -512,7 +524,10 @@ impl<T: Transport + 'static> ConsensusEngine<T> {
                 config.participants.clone(),
             );
 
-            // Broadcast result
+            // Notify the proposal's completion channel (for handle_propose waiting)
+            state_guard.notify_completion(message.sequence, result.clone());
+
+            // Broadcast result (for subscribers)
             let _ = result_tx.send(result);
         }
 
@@ -521,7 +536,7 @@ impl<T: Transport + 'static> ConsensusEngine<T> {
 
     async fn handle_view_change(
         state: &Arc<RwLock<ConsensusState>>,
-        transport: &Arc<Mutex<T>>,
+        transport: &Arc<RwLock<T>>,
         config: &Config,
         message_builder: &MessageBuilder,
     ) -> Result<()> {
@@ -536,7 +551,7 @@ impl<T: Transport + 'static> ConsensusEngine<T> {
         // Send view change message
         let view_change = message_builder.view_change(new_view, 0); // Simplified
         let message = Message::broadcast(config.node_id, view_change);
-        transport.lock().await.send(message).await?;
+        transport.read().await.send(message).await?;
 
         info!("🔄 Initiated view change to view {}", new_view);
         Ok(())
@@ -544,9 +559,9 @@ impl<T: Transport + 'static> ConsensusEngine<T> {
 
     async fn handle_view_change_message(
         state: &Arc<RwLock<ConsensusState>>,
-        _transport: &Arc<Mutex<T>>,
-        _config: &Config,
-        _message_builder: &MessageBuilder,
+        transport: &Arc<RwLock<T>>,
+        config: &Config,
+        message_builder: &MessageBuilder,
         message: ConsensusMessage,
     ) -> Result<()> {
         let view_change_data = ViewChangeData::from_bytes(&message.data)
@@ -554,15 +569,32 @@ impl<T: Transport + 'static> ConsensusEngine<T> {
                 message: "Failed to deserialize view change data".to_string(),
             })?;
 
+        let new_view = view_change_data.new_view;
+        let mut state_guard = state.write().await;
+
+        // If we haven't started a view change yet, start one now
+        // (we received a view change message from another node)
+        if !state_guard.view_change_in_progress && new_view > state_guard.current_view {
+            state_guard.start_view_change(new_view)?;
+            drop(state_guard);
+
+            // Broadcast our own view change vote
+            let view_change = message_builder.view_change(new_view, 0);
+            let msg = Message::broadcast(config.node_id, view_change);
+            transport.read().await.send(msg).await?;
+
+            state_guard = state.write().await;
+        }
+
         // Process view change vote
-        let has_quorum = state.write().await.process_view_change_vote(
+        let has_quorum = state_guard.process_view_change_vote(
             view_change_data.new_view,
             view_change_data.node,
         )?;
 
         if has_quorum {
             // Complete view change
-            state.write().await.complete_view_change(view_change_data.new_view)?;
+            state_guard.complete_view_change(view_change_data.new_view)?;
             info!("✅ Completed view change to view {}", view_change_data.new_view);
         }
 
@@ -580,14 +612,14 @@ impl<T: Transport + 'static> ConsensusEngine<T> {
 
     async fn handle_checkpoint(
         state: &Arc<RwLock<ConsensusState>>,
-        transport: &Arc<Mutex<T>>,
+        transport: &Arc<RwLock<T>>,
         config: &Config,
         message_builder: &MessageBuilder,
     ) -> Result<()> {
         if let Some((sequence, state_hash)) = state.write().await.create_checkpoint() {
             let checkpoint = message_builder.checkpoint(sequence, state_hash);
             let message = Message::broadcast(config.node_id, checkpoint);
-            transport.lock().await.send(message).await?;
+            transport.read().await.send(message).await?;
 
             info!("📍 Created checkpoint at sequence {}", sequence);
         }

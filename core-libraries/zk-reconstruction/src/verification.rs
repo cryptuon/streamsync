@@ -260,7 +260,7 @@ impl ReconstructionVerifier {
 
         let mut passed = 0;
         let mut failed = 0;
-        let mut skipped = 0;
+        let mut _skipped = 0;
         let mut all_issues = Vec::new();
 
         for (_method, result) in results {
@@ -270,7 +270,7 @@ impl ReconstructionVerifier {
                     failed += 1;
                     all_issues.extend(issues);
                 },
-                VerificationResult::Skip(_) => skipped += 1,
+                VerificationResult::Skip(_) => _skipped += 1,
             }
         }
 

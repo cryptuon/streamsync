@@ -1,8 +1,11 @@
 //! Payment Gateway for StreamSync API access
+//!
+//! This module handles payment verification and API access control.
+//! Supports both Solana (SOL, STRM, USDC) and Stripe (USD) payments.
 
-use crate::economics::{EconomicsManager, PaymentToken, RequestCost};
+use crate::economics::{EconomicsManager, PaymentToken};
 use axum::{
-    extract::{Query, State},
+    extract::State,
     http::{HeaderMap, StatusCode},
     response::Json,
     routing::{get, post},
@@ -11,9 +14,17 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::str::FromStr;
 use tokio::sync::RwLock;
 use uuid::Uuid;
-use anyhow::Result;
+use anyhow::{anyhow, Result};
+use solana_client::rpc_client::RpcClient;
+use solana_sdk::{
+    pubkey::Pubkey,
+    signature::Signature,
+};
+use solana_transaction_status::UiTransactionEncoding;
+use tracing::{info, warn};
 
 /// API key authentication
 #[derive(Debug, Clone)]
@@ -123,29 +134,141 @@ impl PaymentGateway {
             .with_state(gateway)
     }
 
-    /// Verify Solana payment
+    /// Verify Solana payment by checking transaction on-chain
     async fn verify_solana_payment(&self, tx_signature: &str, expected_amount: f64, token: &PaymentToken) -> Result<bool> {
-        // In a real implementation, this would:
-        // 1. Query the Solana RPC to get transaction details
-        // 2. Verify the transaction was successful
-        // 3. Verify the amount and recipient match expectations
-        // 4. Verify the token type matches
+        info!("Verifying Solana payment: sig={}, amount={}, token={:?}", tx_signature, expected_amount, token);
 
-        // For now, return true as placeholder
-        // TODO: Implement actual Solana transaction verification
-        Ok(true)
+        // Parse signature
+        let signature = Signature::from_str(tx_signature)
+            .map_err(|e| anyhow!("Invalid transaction signature: {}", e))?;
+
+        // Create RPC client
+        let rpc_client = RpcClient::new(self.config.solana_rpc_url.clone());
+
+        // Parse treasury wallet
+        let treasury = Pubkey::from_str(&self.config.treasury_wallet)
+            .map_err(|e| anyhow!("Invalid treasury wallet: {}", e))?;
+
+        // Fetch transaction with retry
+        let tx_result = rpc_client.get_transaction(&signature, UiTransactionEncoding::Json);
+
+        match tx_result {
+            Ok(tx) => {
+                // Verify transaction was successful
+                if let Some(meta) = tx.transaction.meta {
+                    if meta.err.is_some() {
+                        warn!("Transaction {} failed on-chain", tx_signature);
+                        return Ok(false);
+                    }
+
+                    // Get pre/post balances to verify transfer
+                    let pre_balances = meta.pre_balances;
+                    let post_balances = meta.post_balances;
+
+                    // For SOL transfers, check native balance changes
+                    if *token == PaymentToken::SOL {
+                        // Find treasury account index in the transaction
+                        if let Some(decoded) = &tx.transaction.transaction.decode() {
+                            let account_keys = decoded.message.static_account_keys();
+                            for (i, key) in account_keys.iter().enumerate() {
+                                if *key == treasury {
+                                    // Check balance increased
+                                    if i < post_balances.len() && i < pre_balances.len() {
+                                        let received = (post_balances[i] as i64 - pre_balances[i] as i64) as f64
+                                            / 1_000_000_000.0; // lamports to SOL
+                                        if received >= expected_amount * 0.99 { // Allow 1% slippage
+                                            info!("Payment verified: received {} SOL", received);
+                                            return Ok(true);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // For SPL tokens (STRM, USDC), check token account balance changes
+                    if let Some(token_balances) = Option::<Vec<_>>::from(meta.post_token_balances) {
+                        for token_balance in token_balances {
+                            // Get owner from OptionSerializer
+                            let owner: Option<String> = Option::from(token_balance.owner.clone());
+                            if let Some(owner_str) = owner {
+                                if owner_str == self.config.treasury_wallet {
+                                    // Found treasury token account - verify mint matches expected token
+                                    let expected_mint = match token {
+                                        PaymentToken::STRM => "STRMxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+                                        PaymentToken::USDC => "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+                                        _ => continue,
+                                    };
+
+                                    if token_balance.mint == expected_mint {
+                                        if let Some(amount) = token_balance.ui_token_amount.ui_amount {
+                                            if amount >= expected_amount * 0.99 {
+                                                info!("Payment verified: received {} {:?}", amount, token);
+                                                return Ok(true);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                warn!("Could not verify payment amount for tx {}", tx_signature);
+                Ok(false)
+            }
+            Err(e) => {
+                warn!("Failed to fetch transaction {}: {}", tx_signature, e);
+                Err(anyhow!("Failed to fetch transaction: {}", e))
+            }
+        }
     }
 
-    /// Verify Stripe payment
+    /// Verify Stripe payment using Stripe API
     async fn verify_stripe_payment(&self, payment_intent_id: &str, expected_amount: f64) -> Result<bool> {
-        // In a real implementation, this would:
-        // 1. Call Stripe API to verify payment intent
-        // 2. Check that payment was successful
-        // 3. Verify amount matches
+        info!("Verifying Stripe payment: intent={}, amount={}", payment_intent_id, expected_amount);
 
-        // For now, return true as placeholder
-        // TODO: Implement actual Stripe payment verification
-        Ok(true)
+        // Check if Stripe is configured
+        let stripe_key = self.config.stripe_secret_key.as_ref()
+            .ok_or_else(|| anyhow!("Stripe not configured"))?;
+
+        // Call Stripe API to verify payment intent
+        let client = reqwest::Client::new();
+        let url = format!("https://api.stripe.com/v1/payment_intents/{}", payment_intent_id);
+
+        let response = client
+            .get(&url)
+            .header("Authorization", format!("Bearer {}", stripe_key))
+            .send()
+            .await
+            .map_err(|e| anyhow!("Failed to call Stripe API: {}", e))?;
+
+        if !response.status().is_success() {
+            warn!("Stripe API returned error for intent {}", payment_intent_id);
+            return Ok(false);
+        }
+
+        let payment_intent: serde_json::Value = response.json().await
+            .map_err(|e| anyhow!("Failed to parse Stripe response: {}", e))?;
+
+        // Verify payment status
+        let status = payment_intent["status"].as_str().unwrap_or("");
+        if status != "succeeded" {
+            warn!("Payment intent {} status is {}, not succeeded", payment_intent_id, status);
+            return Ok(false);
+        }
+
+        // Verify amount (Stripe amounts are in cents)
+        let amount_cents = payment_intent["amount"].as_i64().unwrap_or(0);
+        let amount_usd = amount_cents as f64 / 100.0;
+
+        if amount_usd >= expected_amount * 0.99 {
+            info!("Stripe payment verified: ${:.2}", amount_usd);
+            Ok(true)
+        } else {
+            warn!("Payment amount ${:.2} less than expected ${:.2}", amount_usd, expected_amount);
+            Ok(false)
+        }
     }
 }
 

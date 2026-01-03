@@ -1,6 +1,8 @@
 //! Performance benchmarking against Helius and other RPC providers
 //! Demonstrates StreamSync's competitive advantages in parsing performance
 
+#![allow(dead_code)]
+
 use anyhow::Result;
 use program_parser::{ProgramParser, types::ParseConfig};
 use solana_sdk::pubkey::Pubkey;

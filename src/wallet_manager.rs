@@ -1,12 +1,12 @@
 //! Wallet management and token custody for StreamSync
+//!
+//! This module provides placeholder implementations for future wallet management functionality.
 
 use crate::economics::PaymentToken;
 use serde::{Deserialize, Serialize};
 use solana_sdk::{
     pubkey::Pubkey,
-    signature::{Keypair, Signature},
-    signer::Signer,
-    transaction::Transaction,
+    signature::Signature,
 };
 use std::collections::HashMap;
 use std::str::FromStr;
@@ -196,13 +196,13 @@ impl WalletManager {
     pub async fn verify_wallet_ownership(
         &self,
         user_id: Uuid,
-        message: &str,
-        signature: Signature,
+        _message: &str,
+        _signature: Signature,
     ) -> Result<bool> {
         let wallets = self.user_wallets.read().await;
 
         if let Some(user_wallet) = wallets.get(&user_id) {
-            if let WalletType::External { public_key, .. } = &user_wallet.wallet_type {
+            if let WalletType::External { public_key: _, .. } = &user_wallet.wallet_type {
                 // Verify signature against message and public key
                 // This would use solana_sdk::signature::verify for actual verification
                 // For now, we'll return true as a placeholder
@@ -347,11 +347,11 @@ impl WalletManager {
     /// Execute transaction from hot wallet
     async fn execute_hot_wallet_transaction(
         &self,
-        keypair_path: &str,
-        encrypted: bool,
-        destination: Pubkey,
-        amount: u64,
-        token: &PaymentToken,
+        _keypair_path: &str,
+        _encrypted: bool,
+        _destination: Pubkey,
+        _amount: u64,
+        _token: &PaymentToken,
     ) -> Result<Signature> {
         // Load keypair (would need actual file reading and decryption)
         // For now, generate a random signature as placeholder
@@ -370,9 +370,9 @@ impl WalletManager {
     /// Verify deposit transaction on-chain
     async fn verify_deposit_transaction(
         &self,
-        signature: Signature,
-        token: &PaymentToken,
-        expected_amount: u64,
+        _signature: Signature,
+        _token: &PaymentToken,
+        _expected_amount: u64,
     ) -> Result<bool> {
         // Get transaction details from Solana
         // This would use rpc_client.get_transaction() to verify:
@@ -422,8 +422,8 @@ impl WalletManager {
 
     /// Get treasury balance
     pub async fn get_treasury_balance(&self, token: &PaymentToken) -> Result<u64> {
-        if let Some(mint) = self.config.token_mints.get(token) {
-            if let WalletType::ColdStorage { public_key, .. } = &self.config.treasury_wallet {
+        if let Some(_mint) = self.config.token_mints.get(token) {
+            if let WalletType::ColdStorage { public_key: _, .. } = &self.config.treasury_wallet {
                 // Get token account balance from Solana
                 // This would use rpc_client.get_token_account_balance()
                 // Placeholder return
@@ -435,7 +435,7 @@ impl WalletManager {
     }
 
     /// Emergency freeze user withdrawals
-    pub async fn emergency_freeze(&self, user_id: Uuid) -> Result<()> {
+    pub async fn emergency_freeze(&self, _user_id: Uuid) -> Result<()> {
         // Implementation would mark user wallet as frozen
         // and prevent any outgoing transactions
         Ok(())

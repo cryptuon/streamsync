@@ -6,10 +6,10 @@ use nng::{Socket, Protocol};
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::Arc;
-use tokio::sync::{RwLock, mpsc};
+use tokio::sync::RwLock;
 use tokio::time::{interval, Duration};
 use uuid::Uuid;
-use tracing::{info, warn, debug};
+use tracing::{info, debug};
 
 /// Node discovery service for finding and managing peers
 pub struct NodeDiscovery {
@@ -108,7 +108,7 @@ impl NodeDiscovery {
         };
 
         let request_data = bincode::serialize(&request)?;
-        socket.send(&request_data)?;
+        socket.send(&request_data).map_err(|(_msg, e)| anyhow::anyhow!("Send failed: {:?}", e))?;
 
         // Wait for response
         let response_data = socket.recv()?;
@@ -153,7 +153,7 @@ impl NodeDiscovery {
 
         if let Some(socket) = &self.discovery_socket {
             let data = bincode::serialize(&announcement)?;
-            socket.send(&data)?;
+            socket.send(&data).map_err(|(_msg, e)| anyhow::anyhow!("Send failed: {:?}", e))?;
         }
 
         info!("📢 Announced node {} to network", self.config.node_id);

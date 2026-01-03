@@ -3,10 +3,10 @@
 //! This shows the dataset validation system working with realistic success rates
 //! for synthetic data, demonstrating the full validation flow
 
-use zk_reconstruction::{ZKReconstructionLibrary, types::{TruncatedData, CompressionParams, CompressionType, TruncationMetadata}};
+#![allow(dead_code)]
+
+use zk_reconstruction::ZKReconstructionLibrary;
 use idl_sync::IDLSyncLibrary;
-use solana_sdk::pubkey::Pubkey;
-use std::str::FromStr;
 use std::time::SystemTime;
 use std::fs;
 use tracing::{info, warn};
@@ -196,7 +196,7 @@ impl DatasetValidatorDemo {
         };
 
         for (i, tx) in transactions.iter().enumerate() {
-            let start_time = std::time::Instant::now();
+            let _start_time = std::time::Instant::now();
 
             // Simulate testing with realistic outcomes
             let success_probability = expected_success_rate + (tx.slot as f64 * 0.001) % 0.3 - 0.15;

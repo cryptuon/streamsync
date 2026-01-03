@@ -2,26 +2,24 @@
 
 How competitive markets and economic incentives create better performance at fair prices while eliminating vendor lock-in.
 
+> **See also**: [Token Economics](token-economics.md) for complete $STRM token details, staking requirements, and smart contract architecture.
+
 ## Economic Model Overview
 
-### Two-Token System
+### $STRM Token System
 ```rust
-pub struct NetworkTokens {
-    // Access Token: Customer purchases for network access
-    query_token: QueryToken {
-        symbol: "QUERY",
-        purchase_currency: SOL,
-        usage: NetworkAccess,
-        settlement_blockchain: Solana,
-    },
+pub enum PaymentToken {
+    STRM,           // Native token - lowest fees
+    SOL,            // Solana native - convenient
+    USDC,           // Stablecoin - predictable costs
+    SPL(String),    // Custom SPL tokens
+}
 
-    // Governance Token: Network participants earn for contributions
-    governance_token: GovernanceToken {
-        symbol: "INDEX",
-        earning_mechanism: NodeOperations + CommunityContributions,
-        usage: NetworkGovernance + ProtocolUpgrades,
-        distribution: PerformanceBased,
-    },
+pub struct RevenueSharing {
+    treasury_percentage: 0.20,        // 20% - protocol development
+    node_operator_percentage: 0.50,   // 50% - nodes serving requests
+    data_provider_percentage: 0.20,   // 20% - Solana RPC providers
+    governance_percentage: 0.10,      // 10% - STRM stakers
 }
 ```
 
@@ -354,9 +352,10 @@ pub struct InnovationIncentives {
 pub struct RevenueDistribution {
     // Customer payments distributed across network participants
     customer_payments: CustomerPayments {
-        node_operators: Percentage(85),    // 85% to node operators for service
-        protocol_treasury: Percentage(10), // 10% to protocol development
-        governance_rewards: Percentage(5), // 5% to governance participants
+        node_operators: Percentage(50),      // 50% to node operators for service
+        protocol_treasury: Percentage(20),   // 20% to protocol development
+        data_providers: Percentage(20),      // 20% to Solana RPC providers
+        governance_rewards: Percentage(10),  // 10% to STRM stakers
     },
 
     // Sustainable economics for all participants

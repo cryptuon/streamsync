@@ -3,6 +3,8 @@
 //! This test suite provides fast, controlled tests with real Solana data patterns
 //! to validate our enhanced error handling and structured logging.
 
+#![allow(dead_code)]
+
 use zk_reconstruction::{ZKReconstructionLibrary, types::{TruncatedData, CompressionParams, CompressionType, TruncationMetadata}};
 use idl_sync::IDLSyncLibrary;
 use solana_sdk::pubkey::Pubkey;

@@ -206,14 +206,11 @@ impl LiveDataDemo {
     fn create_truncated_data_from_live(&self, transaction: &EncodedConfirmedTransactionWithStatusMeta) -> Result<TruncatedData> {
         let spl_token_program = Pubkey::from_str("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA")?;
 
-        // Use transaction signature as data source (simulation)
-        let sig_bytes = transaction.transaction.signatures
-            .as_ref()
-            .and_then(|sigs| sigs.get(0))
-            .map(|sig| sig.as_bytes())
-            .unwrap_or(b"live_data");
+        // Use slot as data source (simplified - actual implementation would extract real data)
+        let slot_bytes = transaction.slot.to_le_bytes();
+        let sig_bytes: &[u8] = &slot_bytes;
 
-        // Create truncated data (take first 16 bytes)
+        // Create truncated data (take first 16 bytes or pad with slot data)
         let truncation_point = std::cmp::min(16, sig_bytes.len());
         let truncated_bytes = sig_bytes[0..truncation_point].to_vec();
 

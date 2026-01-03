@@ -1,6 +1,6 @@
 //! Metaplex program parser
 
-use crate::{error::{ParseError, ParseResult}, types::*};
+use crate::{error::ParseError, types::*};
 use solana_sdk::pubkey::Pubkey;
 
 pub struct MetaplexParser;
@@ -8,7 +8,7 @@ pub struct MetaplexParser;
 impl MetaplexParser {
     pub fn new() -> Self { Self }
 
-    pub async fn parse(&self, _program_id: &Pubkey, instruction_data: &[u8], _account_keys: &[Pubkey]) -> Result<crate::types::ParseResult, ParseError> {
+    pub async fn parse(&self, _program_id: &Pubkey, _instruction_data: &[u8], _account_keys: &[Pubkey]) -> Result<crate::types::ParseResult, ParseError> {
         // Simplified Metaplex parser
         Ok(crate::types::ParseResult::Metaplex(MetaplexData {
             operation_type: MetaplexOperation::MintNft,

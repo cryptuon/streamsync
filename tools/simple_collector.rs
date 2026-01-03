@@ -5,8 +5,8 @@
 
 use serde::{Serialize, Deserialize};
 use std::collections::{HashMap, HashSet};
-use std::time::{Duration, SystemTime};
-use tracing::{info, warn};
+use std::time::SystemTime;
+use tracing::info;
 use anyhow::Result;
 use std::fs;
 use std::path::Path;
@@ -64,7 +64,7 @@ impl RealDataGenerator {
         info!("🏗️ Generating realistic dataset with {} transactions", target_count);
 
         let mut transactions = Vec::new();
-        let mut current_slot = 250_000_000u64; // Recent slot range
+        let current_slot = 250_000_000u64; // Recent slot range
 
         // Distribution based on real Solana usage
         let spl_token_count = (target_count as f64 * 0.4) as usize; // 40% SPL Token
@@ -490,7 +490,7 @@ async fn main() -> Result<()> {
 
     let generator = RealDataGenerator::new(output_dir);
     let transactions = generator.generate_realistic_dataset(target_count)?;
-    let stats = generator.save_dataset(&transactions)?;
+    let _stats = generator.save_dataset(&transactions)?;
 
     info!("✅ Dataset generation completed successfully!");
     info!("💾 Dataset saved to: {}/solana_dataset.json", output_dir);

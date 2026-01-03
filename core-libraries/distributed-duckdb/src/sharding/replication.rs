@@ -6,7 +6,7 @@
 use super::ShardingConfig;
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use uuid::Uuid;
 use chrono::{DateTime, Utc};
 use tokio::sync::{RwLock, mpsc};
@@ -105,7 +105,7 @@ pub enum OperationType {
     Emergency,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum ReplicationOperationStatus {
     Pending,
     InProgress,
@@ -320,8 +320,8 @@ impl ReplicationManager {
         // Try to replicate to all nodes but only wait for quorum
         let mut tasks = Vec::new();
         for &node_id in target_nodes {
-            let shard_id = shard_id.to_string();
-            let data = data.to_vec();
+            let _shard_id = shard_id.to_string();
+            let _data = data.to_vec();
 
             let task = tokio::spawn(async move {
                 // Simulate replication to node

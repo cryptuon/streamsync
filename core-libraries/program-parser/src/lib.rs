@@ -33,35 +33,11 @@
 //!
 //! ## Quick Start
 //!
-//! ```rust,no_run
-//! use program_parser::{ProgramParser, ParseResult};
-//! use solana_sdk::pubkey::Pubkey;
+//! ```rust
+//! use program_parser::ProgramParser;
 //!
-//! # async fn example() -> anyhow::Result<()> {
+//! // Create a program parser
 //! let parser = ProgramParser::new();
-//!
-//! // Parse transaction data
-//! let transaction_data = vec![/* raw transaction bytes */];
-//! let parsed = parser.parse_transaction_data(&transaction_data).await?;
-//!
-//! match parsed {
-//!     ParseResult::SplToken(token_data) => {
-//!         println!("SPL Token transfer: {} tokens", token_data.amount);
-//!         println!("From: {} To: {}", token_data.from, token_data.to);
-//!     },
-//!     ParseResult::Metaplex(nft_data) => {
-//!         println!("NFT: {} by {}", nft_data.name, nft_data.creator);
-//!         println!("URI: {}", nft_data.uri);
-//!     },
-//!     ParseResult::Jupiter(swap_data) => {
-//!         println!("Swap: {} {} for {} {}",
-//!                  swap_data.input_amount, swap_data.input_mint,
-//!                  swap_data.output_amount, swap_data.output_mint);
-//!     },
-//!     _ => println!("Parsed other program type"),
-//! }
-//! # Ok(())
-//! # }
 //! ```
 
 pub mod error;

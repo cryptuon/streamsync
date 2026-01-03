@@ -1,6 +1,5 @@
 //! Shard management for distributed data
 
-use anyhow::Result;
 
 /// Manager for data shards across the network
 pub struct ShardManager {

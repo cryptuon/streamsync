@@ -63,6 +63,7 @@ pub mod codec;
 pub mod security;
 pub mod metrics;
 pub mod discovery;
+pub mod gossip;
 
 pub use config::NetworkConfig;
 pub use error::{NetworkError, Result};
@@ -72,6 +73,7 @@ pub use codec::{MessageCodec, BinaryCodec, JsonCodec};
 pub use security::{SecurityProvider, TlsProvider};
 pub use metrics::NetworkMetrics;
 pub use discovery::{DiscoveryManager, DiscoveredPeer, DiscoveryMethod, NetworkTopology, DiscoveryEvent};
+pub use gossip::{GossipManager, GossipConfig, GossipMessage, GossipPeerInfo, PeerStatus};
 
 /// Re-export commonly used types
 pub use std::net::SocketAddr;

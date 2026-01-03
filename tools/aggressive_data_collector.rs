@@ -1,6 +1,8 @@
 //! Aggressive Data Collector - Collect diverse Solana data until ZK reconstruction works
 //! Tests against multiple RPC endpoints and program types to find working reconstruction patterns
 
+#![allow(dead_code)]
+
 use solana_client::rpc_client::RpcClient;
 use solana_client::rpc_config::{RpcAccountInfoConfig, RpcProgramAccountsConfig};
 use solana_sdk::{commitment_config::CommitmentConfig, pubkey::Pubkey};
@@ -12,9 +14,8 @@ use idl_sync::IDLSyncLibrary;
 use std::str::FromStr;
 use std::time::{Duration, SystemTime};
 use std::collections::HashMap;
-use tracing::{info, warn, error};
+use tracing::{info, warn};
 use anyhow::{Result, Context};
-use serde_json;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -220,6 +221,7 @@ impl AggressiveDataCollector {
                 min_context_slot: None,
             },
             with_context: Some(false),
+            sort_results: None,
         };
 
         let accounts = rpc_client.get_program_accounts_with_config(&program.pubkey, config)
@@ -273,12 +275,12 @@ impl AggressiveDataCollector {
         })
     }
 
-    async fn test_idl_generation(&self, program: &TestProgram, results: &ProgramTestResult) -> Result<()> {
+    async fn test_idl_generation(&self, program: &TestProgram, _results: &ProgramTestResult) -> Result<()> {
         info!("🔧 Testing IDL generation for {} (vs Helius advantage: {})",
               program.name, program.helius_advantage);
 
         // Create mock transactions for IDL generation (simplified approach)
-        let mock_transactions: Vec<solana_sdk::transaction::Transaction> = vec![]; // Empty for now - IDL generation needs Transaction objects
+        let _mock_transactions: Vec<solana_sdk::transaction::Transaction> = vec![]; // Empty for now - IDL generation needs Transaction objects
 
         // For now, just simulate IDL generation success with mock data since we need Transaction objects
         info!("   🔧 Simulating IDL generation (would use real transactions in production)");
