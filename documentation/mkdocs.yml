@@ -1,0 +1,101 @@
+site_name: StreamSync
+site_description: High-Performance Decentralized Indexing Network for Solana
+site_url: https://streamsync.docs.cryptuon.com/
+
+repo_url: https://github.com/cryptuon/streamsync
+repo_name: cryptuon/streamsync
+edit_uri: edit/main/documentation/docs/
+
+docs_dir: docs
+site_dir: site
+
+theme:
+  name: material
+  palette:
+    - scheme: slate
+      primary: indigo
+      accent: blue
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+    - scheme: default
+      primary: indigo
+      accent: blue
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.tabs.link
+  icon:
+    repo: fontawesome/brands/github
+  logo: assets/logo.svg
+
+plugins:
+  - search
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - toc:
+      permalink: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+
+extra_css:
+  - stylesheets/extra.css
+
+extra_javascript:
+  - javascripts/mathjax.js
+
+nav:
+  - Home: index.md
+  - Getting Started:
+      - Quick Start: getting-started/quickstart.md
+      - Installation: getting-started/installation.md
+      - Configuration: getting-started/configuration.md
+  - Concepts:
+      - Overview: concepts/overview.md
+      - Economic Decentralization: concepts/economic-decentralization.md
+      - Racing Competition: concepts/racing-competition.md
+      - Node Specializations: concepts/node-specializations.md
+  - Token Economics:
+      - STRM Token: tokenomics/strm-token.md
+      - Staking: tokenomics/staking.md
+      - Rewards: tokenomics/rewards.md
+      - Pricing: tokenomics/pricing.md
+  - Architecture:
+      - System Overview: architecture/overview.md
+      - Core Libraries: architecture/core-libraries.md
+      - Gossip Protocol: architecture/gossip-protocol.md
+      - Distributed Queries: architecture/distributed-queries.md
+  - API Reference:
+      - Query API: api/query-api.md
+      - Node API: api/node-api.md
+      - Economics API: api/economics-api.md
+  - Operators:
+      - Running a Node: operators/running-a-node.md
+      - Node Types: operators/node-types.md
+      - Performance Tuning: operators/performance-tuning.md
+      - Monitoring: operators/monitoring.md
+  - Resources:
+      - Whitepaper: resources/whitepaper.md
+      - FAQ: resources/faq.md
+      - Glossary: resources/glossary.md
+      - Roadmap: resources/roadmap.md
