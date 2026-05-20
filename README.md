@@ -1,6 +1,13 @@
 # High-Performance Decentralized Indexing Network
 
+> **Active development.** StreamSync is under active development. APIs,
+> schemas, and on-chain layouts may change between releases.
+> Production use at your own risk. Issues and PRs welcome.
+
 An economically decentralized network delivering guaranteed sub-10ms Solana query performance through competitive node operations and market-driven incentives.
+
+- Documentation: <https://docs.cryptuon.com/streamsync/>
+- Marketing site: <https://streamsync.cryptuon.com/>
 
 ## Core Principle: Economic Decentralization over Geographic Distribution
 
@@ -157,7 +164,7 @@ This project has completed **Phase 1 development** with all core systems impleme
 
 ```bash
 # Clone and build
-git clone https://github.com/your-org/streamsync.git
+git clone https://github.com/cryptuon/streamsync.git
 cd streamsync
 cargo build --release
 

@@ -2,6 +2,12 @@
 
 **High-Performance Decentralized Indexing Network for Solana**
 
+!!! warning "Under active development"
+
+    StreamSync is under active development. APIs, schemas, and on-chain
+    layouts may change. Production use at your own risk.
+    Issues + PRs welcome — see the [GitHub repo](https://github.com/cryptuon/streamsync).
+
 StreamSync delivers guaranteed sub-10ms Solana query performance through competitive node operations and market-driven incentives.
 
 ---
