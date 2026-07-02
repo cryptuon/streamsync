@@ -3,7 +3,7 @@ name = "distributed-duckdb"
 version = "0.1.0"
 edition = "2021"
 description = "Distributed DuckDB coordination for analytical queries"
-license = "MIT OR Apache-2.0"
+license = "MIT"
 
 [dependencies]
 tokio = { workspace = true }

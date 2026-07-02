@@ -3,7 +3,7 @@ name = "storage-core"
 version = "0.1.0"
 edition = "2021"
 description = "High-performance storage layer for StreamSync transaction indexing"
-license = "MIT OR Apache-2.0"
+license = "MIT"
 
 [dependencies]
 # Database - simplified for now

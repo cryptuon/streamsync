@@ -3,7 +3,7 @@ name = "zk-reconstruction"
 version = "0.1.0"
 edition = "2021"
 description = "High-performance ZK compression gap reconstruction for Solana indexing"
-license = "MIT OR Apache-2.0"
+license = "MIT"
 
 [dependencies]
 tokio = { workspace = true }

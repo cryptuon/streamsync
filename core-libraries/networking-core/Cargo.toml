@@ -3,7 +3,7 @@ name = "networking-core"
 version = "0.1.0"
 edition = "2021"
 description = "High-performance networking layer for distributed systems"
-license = "MIT OR Apache-2.0"
+license = "MIT"
 
 [dependencies]
 tokio = { workspace = true }

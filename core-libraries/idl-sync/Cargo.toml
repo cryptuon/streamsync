@@ -3,7 +3,7 @@ name = "idl-sync"
 version = "0.1.0"
 edition = "2021"
 description = "Real-time IDL synchronization from Solana program behavior analysis"
-license = "MIT OR Apache-2.0"
+license = "MIT"
 
 [dependencies]
 tokio = { workspace = true }

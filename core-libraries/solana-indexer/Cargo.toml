@@ -3,7 +3,7 @@ name = "solana-indexer"
 version = "0.1.0"
 edition = "2021"
 description = "Solana transaction indexing and fetching for StreamSync"
-license = "MIT OR Apache-2.0"
+license = "MIT"
 
 [dependencies]
 # Solana dependencies
