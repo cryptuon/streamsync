@@ -1,5 +1,7 @@
 # High-Performance Decentralized Indexing Network
 
+**[🌐 Site](https://streamsync.cryptuon.com/) · [📚 Docs](https://docs.cryptuon.com/streamsync/) · [🔬 Cryptuon Research](https://github.com/cryptuon)**
+
 > **Active development.** StreamSync is under active development. APIs,
 > schemas, and on-chain layouts may change between releases.
 > Production use at your own risk. Issues and PRs welcome.
@@ -191,3 +193,13 @@ cargo test --workspace
 ---
 
 **This network is economically decentralized from day 1, with technical decentralization following market-driven expansion.**
+
+---
+
+## Part of Cryptuon Research
+
+`streamsync` is one of [20 open-source blockchain-infrastructure projects](https://www.cryptuon.com/projects) from **[Cryptuon Research](https://www.cryptuon.com)** — blockchain theory, shipped as protocols.
+
+**Related projects:** [SolanaVault](https://solanavault.cryptuon.com/) · [Switchboard](https://switchboard.cryptuon.com/) · [SolanaLM](https://solanalm.cryptuon.com/)
+
+Docs: [docs.cryptuon.com/streamsync](https://docs.cryptuon.com/streamsync/) · Contact: [contact@cryptuon.com](mailto:contact@cryptuon.com)

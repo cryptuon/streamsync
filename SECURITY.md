@@ -2,7 +2,7 @@
 
 ## Reporting a vulnerability
 
-If you believe you've found a security vulnerability, please report it privately to **me@dipankar.name** rather than opening a public issue. Expect an initial acknowledgement within 48 hours.
+If you believe you've found a security vulnerability, please report it privately to **contact@cryptuon.com** rather than opening a public issue. Expect an initial acknowledgement within 48 hours.
 
 When reporting, please include:
 

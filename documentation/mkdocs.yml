@@ -1,6 +1,8 @@
 site_name: StreamSync
 site_description: High-Performance Decentralized Indexing Network for Solana
 site_url: https://docs.cryptuon.com/streamsync/
+site_author: Cryptuon Research
+copyright: © 2026 Cryptuon Research
 
 repo_url: https://github.com/cryptuon/streamsync
 repo_name: cryptuon/streamsync
@@ -57,6 +59,14 @@ markdown_extensions:
           format: !!python/name:pymdownx.superfences.fence_code_format
   - pymdownx.tabbed:
       alternate_style: true
+
+extra:
+  homepage: https://streamsync.cryptuon.com/
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/cryptuon/streamsync
+    - icon: fontawesome/solid/globe
+      link: https://www.cryptuon.com
 
 extra_css:
   - stylesheets/extra.css

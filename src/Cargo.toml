@@ -4,6 +4,12 @@ version = "0.1.0"
 edition = "2021"
 description = "StreamSync distributed Solana transaction indexing node"
 license = "MIT OR Apache-2.0"
+authors = ["Cryptuon Research <contact@cryptuon.com>"]
+homepage = "https://streamsync.cryptuon.com/"
+documentation = "https://docs.cryptuon.com/streamsync/"
+repository = "https://github.com/cryptuon/streamsync"
+keywords = ["solana", "indexing", "rpc", "depin", "blockchain"]
+categories = ["database", "network-programming"]
 
 [lib]
 name = "streamsync_node"

@@ -64,4 +64,4 @@ Open an issue tagged `question` if you're unsure about:
 - Architecture or design decisions
 - Whether a feature is planned
 
-Reaching the maintainer privately: **me@dipankar.name**.
+Reaching the maintainer privately: **contact@cryptuon.com**.
