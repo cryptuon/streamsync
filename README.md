@@ -1,21 +1,51 @@
-# High-Performance Decentralized Indexing Network
+# StreamSync — Decentralized Data Infrastructure for the Agent Economy
 
-**[🌐 Site](https://streamsync.cryptuon.com/) · [📚 Docs](https://docs.cryptuon.com/streamsync/) · [🔬 Cryptuon Research](https://github.com/cryptuon)**
+**[🌐 Site](https://streamsync.cryptuon.com/) · [📚 Docs](https://docs.cryptuon.com/streamsync/) · [🗺️ Roadmap](ROADMAP.md) · [🔬 Cryptuon Research](https://github.com/cryptuon)**
 
 > **Active development.** StreamSync is under active development. APIs,
 > schemas, and on-chain layouts may change between releases.
 > Production use at your own risk. Issues and PRs welcome.
 
-An economically decentralized network delivering guaranteed sub-10ms Solana query performance through competitive node operations and market-driven incentives.
+StreamSync is a **high-performance decentralized indexing network for Solana** — a DePIN
+that delivers guaranteed sub-10ms queries through racing competition between independent
+operators and distributed DuckDB sharding. It is the fast, verifiable read layer that
+autonomous agents, trading systems, and real-time dApps depend on. Built in Rust, MIT-licensed.
 
 - Documentation: <https://docs.cryptuon.com/streamsync/>
 - Marketing site: <https://streamsync.cryptuon.com/>
+- Roadmap & cheapest path to production: [ROADMAP.md](ROADMAP.md)
+
+## Why this matters in 2026
+
+The consumers of on-chain data have changed. It is no longer just dashboards and
+front-ends polling an RPC — it is **autonomous agents making payments, on-chain and
+verifiable AI systems reading state to act on it, RWA platforms reconciling ledgers, and
+real-time apps that render on every block**. These workloads share one requirement:
+**reads that are fast, correct, and not gated by a single vendor.**
+
+An agent that settles a trade, or an AI that acts on decoded program state, cannot afford
+tail-latency spikes, mid-quarter rate limits, or a provider that quietly degrades. It needs
+a read layer with an *enforceable* latency SLA and correctness that is backed by capital,
+not a marketing promise. That is exactly the gap StreamSync fills:
+
+- **Real-time data for agents & apps** — sub-10ms answers to account lookups, decoded
+  state, transaction traces, and analytical SQL, so agent loops and live UIs never wait.
+- **Verifiable reads** — every answer is raced across independent operators and confirmed by
+  verifiers; wrong results are slashed from staked $STRM. Correctness is collateralized.
+- **DePIN economics** — operators run on commodity hardware and compete for query revenue.
+  No StreamSync-owned datacenter, no single throat to choke, no vendor lock-in.
+- **Solana-native settlement** — coordination and payment settle on Solana in 5-minute
+  batches, making the network cheap to run and its incentives programmable.
+
+StreamSync sits at the intersection of two 2026 infrastructure narratives — **DePIN** and
+**real-time / verifiable data for the agent economy** — and treats them as one problem: the
+fast, honest reads that everything else composes on top of.
 
 ## Core Principle: Economic Decentralization over Geographic Distribution
 
 True decentralization isn't about where servers are located - it's about **who controls pricing, availability, and access decisions**.
 
-**Current Problem**: Centralized indexing providers hold customers hostage with arbitrary pricing, service restrictions, and single points of failure.
+**Current Problem**: Centralized indexing providers hold customers hostage with arbitrary pricing, service restrictions, and single points of failure. As autonomous agents become primary consumers of on-chain data, that single-vendor dependency becomes a systemic risk, not just an inconvenience.
 
 **Our Solution**: Market-driven competition between independent node operators within a performance-guaranteed protocol.
 
@@ -26,6 +56,7 @@ True decentralization isn't about where servers are located - it's about **who c
 - **Market Pricing**: Supply/demand sets prices, not corporate decisions
 - **Protocol Guarantees**: Cannot be censored or arbitrarily restricted
 - **Competitive Innovation**: Operators compete on performance and features
+- **Agent-Ready**: Verifiable, low-latency reads that autonomous systems can settle on
 
 ## Technical Architecture
 
@@ -130,7 +161,8 @@ Visit http://localhost:8000 to browse the documentation.
 | **Core Libraries** | [docs/core-libraries.md](docs/core-libraries.md) |
 | **Whitepaper** | [docs/whitepaper/](docs/whitepaper/) |
 | **Getting Started** | [docs/getting-started.md](docs/getting-started.md) |
-| **Project Roadmap** | [docs/project-roadmap.md](docs/project-roadmap.md) |
+| **Roadmap & Cheapest Path to Production** | [ROADMAP.md](ROADMAP.md) |
+| **Project Roadmap (detailed)** | [docs/project-roadmap.md](docs/project-roadmap.md) |
 
 ## Project Status
 
@@ -190,9 +222,14 @@ cargo test --workspace
 - [ ] Launch testnet for validation
 - [ ] Mainnet deployment
 
+See [ROADMAP.md](ROADMAP.md) for the vision, milestones (devnet → founding operators →
+testnet → mainnet), the **cheapest path to production**, and the production-viability
+checklist (incentive/settlement contract, latency-SLA verification, shard rebalancing,
+failover, monitoring).
+
 ---
 
-**This network is economically decentralized from day 1, with technical decentralization following market-driven expansion.**
+**This network is economically decentralized from day 1, with technical decentralization following market-driven expansion — the fast, verifiable read layer the agent economy runs on.**
 
 ---
 
